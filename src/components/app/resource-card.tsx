@@ -1,8 +1,9 @@
 import { Subject } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, BookOpen } from 'lucide-react';
+import { Download, BookOpen, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { Separator } from '../ui/separator';
 
 type ResourceCardProps = {
   subject: Subject;
@@ -23,15 +24,18 @@ export function ResourceCard({ subject }: ResourceCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-grow" />
-      <CardFooter className="flex gap-2">
-        <Button asChild variant="secondary" className="flex-1">
+      <Separator />
+      <CardFooter className="flex flex-col items-stretch gap-2 p-4">
+        <Button asChild variant="secondary" className="w-full justify-start">
           <Link href={subject.notesUrl} target="_blank">
-            <Download className="mr-2 h-4 w-4" /> Notes
+            <Download className="mr-2 h-4 w-4" />
+            <span>Notes</span>
           </Link>
         </Button>
-        <Button asChild variant="outline" className="flex-1">
+        <Button asChild variant="outline" className="w-full justify-start">
           <Link href={subject.qpUrl} target="_blank">
-            <Download className="mr-2 h-4 w-4" /> QPs
+            <FileText className="mr-2 h-4 w-4" />
+            <span>Question Papers</span>
           </Link>
         </Button>
       </CardFooter>
