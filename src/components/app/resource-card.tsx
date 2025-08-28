@@ -1,3 +1,6 @@
+
+'use client';
+
 import { Subject } from '@/lib/data';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
