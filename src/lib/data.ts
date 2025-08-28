@@ -3,8 +3,17 @@ import { vtuResources } from './vtu-data';
 export type Subject = {
   id: string;
   name: string;
-  notesUrl: string;
-  qpUrl: string;
+  notes: {
+    module1: string;
+    module2: string;
+    module3: string;
+    module4: string;
+    module5: string;
+  };
+  questionPapers: {
+    current: string;
+    previous: string;
+  };
 };
 
 export const schemes = [
