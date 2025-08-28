@@ -1,5 +1,5 @@
 import { Subject } from '@/lib/data';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, BookOpen, FileText } from 'lucide-react';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ export function ResourceCard({ subject }: ResourceCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow" />
+      <div className="flex-grow" />
       <Separator />
       <CardFooter className="flex flex-col items-stretch gap-2 p-4">
         <Button asChild variant="secondary" className="w-full justify-start">
