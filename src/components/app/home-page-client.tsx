@@ -23,7 +23,10 @@ export function HomePageClient() {
     // Simulate network delay
     setTimeout(() => {
         const { scheme, branch, semester } = filters;
-        const result = resources[scheme]?.[branch]?.[semester] || [];
+        
+        let semesterToUse = semester;
+        
+        const result = resources[scheme]?.[branch]?.[semesterToUse] || [];
         setSubjects(result);
         setIsLoading(false);
     }, 500);
