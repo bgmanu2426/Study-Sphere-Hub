@@ -1,8 +1,10 @@
+import { vtuResources } from './vtu-data';
+
 export type Subject = {
   id: string;
   name: string;
   notesUrl: string;
-  qpUrl:string;
+  qpUrl: string;
 };
 
 export const schemes = [
@@ -36,41 +38,13 @@ export const semesters = [
   { value: '8', label: '8th Sem' },
 ];
 
-
 type Resources = {
   [scheme: string]: {
     [branch: string]: {
-        [semester: string]: Subject[];
+      [semester: string]: Subject[];
     };
   };
 };
 
 // Mock data - in a real app this would come from a database
-export const resources: Resources = {
-  "2022": {
-    "cse": {
-      "3": [
-        { id: "22CS31", name: "Transform Calculus, Fourier Series and Numerical Techniques", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS32", name: "Data Structures and Applications", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS33", name: "Analog and Digital Electronics", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS34", name: "Computer Organization and Architecture", notesUrl: "#", qpUrl: "#" },
-      ],
-      "4": [
-        { id: "22CS41", name: "Design and Analysis of Algorithms", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS42", name: "Microcontroller and Embedded Systems", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS43", name: "Operating Systems", notesUrl: "#", qpUrl: "#" },
-        { id: "22CS44", name: "Object Oriented Concepts", notesUrl: "#", qpUrl: "#" },
-      ]
-    }
-  },
-  "2021": {
-    "cse": {
-      "5": [
-        { id: "21CS51", name: "Management, Entrepreneurship for IT Industry", notesUrl: "#", qpUrl: "#" },
-        { id: "21CS52", name: "Computer Networks", notesUrl: "#", qpUrl: "#" },
-        { id: "21CS53", name: "Database Management System", notesUrl: "#", qpUrl: "#" },
-        { id: "21CS54", name: "Automata Theory and Compiler Design", notesUrl: "#", qpUrl: "#" },
-      ],
-    }
-  }
-}
+export const resources: Resources = vtuResources;
