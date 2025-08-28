@@ -24,9 +24,7 @@ export function HomePageClient() {
     setTimeout(() => {
         const { scheme, branch, semester } = filters;
         
-        let semesterToUse = semester;
-        
-        const result = resources[scheme]?.[branch]?.[semesterToUse] || [];
+        const result = resources[scheme]?.[branch]?.[semester] || [];
         setSubjects(result);
         setIsLoading(false);
     }, 500);
