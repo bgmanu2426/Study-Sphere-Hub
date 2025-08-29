@@ -47,6 +47,11 @@ export const semesters = [
   { value: '8', label: '8th Sem' },
 ];
 
+export const cycles = [
+  { value: '1', label: 'P Cycle' },
+  { value: '2', label: 'C Cycle' },
+];
+
 type Resources = {
   [scheme: string]: {
     [branch: string]: {
