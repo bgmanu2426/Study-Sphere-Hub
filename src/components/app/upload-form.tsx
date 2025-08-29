@@ -24,11 +24,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { schemes, branches, years, semesters as allSemesters, cycles, Subject, ResourceFile } from '@/lib/data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, Bot } from 'lucide-react';
+import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, Bot, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseApp } from '@/lib/firebase';
-import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject, UploadTask } from 'firebase/storage';
 import { useDebounce } from 'use-debounce';
 import { summarizeAndStore } from '@/lib/actions';
 
@@ -66,7 +66,8 @@ type UploadableFile = {
   file: File;
   path: string;
   progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'summarizing' | 'error';
+  status: 'pending' | 'uploading' | 'complete' | 'summarizing' | 'error' | 'canceled';
+  task?: UploadTask;
 }
 
 export function UploadForm() {
@@ -167,6 +168,11 @@ export function UploadForm() {
       const storageRef = ref(storage, fileToUpload.path);
       const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
 
+      // Store the task so we can cancel it
+      setUploadableFiles(prevFiles => 
+        prevFiles.map(f => f.path === fileToUpload.path ? { ...f, task: uploadTask } : f)
+      );
+
       uploadTask.on('state_changed',
         (snapshot: UploadTaskSnapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -175,10 +181,18 @@ export function UploadForm() {
           );
         },
         (error) => {
-          console.error("Upload failed for file:", fileToUpload.file.name, error);
-          setUploadableFiles(prevFiles => 
-            prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f)
-          );
+           switch (error.code) {
+            case 'storage/canceled':
+              setUploadableFiles(prevFiles => 
+                prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'canceled' } : f)
+              );
+              break;
+            default:
+              setUploadableFiles(prevFiles => 
+                prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f)
+              );
+              break;
+          }
           reject(error);
         },
         async () => {
@@ -203,6 +217,13 @@ export function UploadForm() {
       );
     });
   };
+
+  const handleCancelUpload = (path: string) => {
+    const fileToCancel = uploadableFiles.find(f => f.path === path);
+    if (fileToCancel && fileToCancel.task) {
+      fileToCancel.task.cancel();
+    }
+  }
 
   async function onSubmit(values: FormValues) {
     const allFilesToProcess: { file: File, path: string }[] = [];
@@ -232,40 +253,44 @@ export function UploadForm() {
         return;
     }
 
-    const filesToUpload = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' as 'pending' | 'uploading' | 'complete' | 'summarizing' | 'error' }));
+    const filesToUpload: UploadableFile[] = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' }));
     setUploadableFiles(filesToUpload);
     setIsSubmitting(true);
     
     let filesUploadedCount = 0;
-    try {
-      for (const fileToUpload of filesToUpload) {
+    let anyError = false;
+
+    for (const fileToUpload of filesToUpload) {
+      try {
         await uploadFile(fileToUpload);
         filesUploadedCount++;
+      } catch (error: any) {
+        anyError = true;
+        if(error.code !== 'storage/canceled') {
+          toast({
+              variant: 'destructive',
+              title: `Upload failed for ${fileToUpload.file.name}`,
+              description: error.message,
+          });
+        }
       }
-    } catch (error) {
-       toast({
-          variant: 'destructive',
-          title: `An error occurred during upload`,
-          description: 'Not all files were uploaded.',
-        });
     }
     
     setIsSubmitting(false);
 
-    if (filesUploadedCount === allFilesToProcess.length && filesUploadedCount > 0) {
+    if (filesUploadedCount === allFilesToProcess.length && filesUploadedCount > 0 && !anyError) {
       toast({
         title: 'Upload Successful',
         description: `${filesUploadedCount} file(s) have been uploaded and processed.`,
       });
-      // Clear file inputs
       ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
       setUploadableFiles([]);
-      fetchSubject(); // Refresh file list
-    } else if (filesUploadedCount > 0) {
+      fetchSubject();
+    } else if (filesUploadedCount > 0 && anyError) {
         toast({
         variant: 'destructive',
         title: 'Upload Incomplete',
-        description: `Only ${filesUploadedCount} of ${allFilesToProcess.length} files were processed.`,
+        description: `Only ${filesUploadedCount} of ${allFilesToProcess.length} files were processed. Check for errors.`,
       });
       fetchSubject();
     }
@@ -531,12 +556,22 @@ export function UploadForm() {
                         {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
                         {f.status === 'summarizing' && <Bot className="w-4 h-4 animate-spin text-primary"/>}
                         {f.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
+                        {f.status === 'canceled' && <XCircle className="w-4 h-4 text-gray-500"/>}
+                        {f.status === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
                         {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
                         <span className="truncate flex-1">{f.file.name}</span>
                         {f.status === 'uploading' && <span className="text-muted-foreground">{Math.round(f.progress)}%</span>}
-                        {f.status === 'summarizing' && <span className="text-muted-foreground text-primary">Summarizing...</span>}
+                        {f.status === 'summarizing' && <span className="text-xs text-primary">Summarizing...</span>}
+                        {f.status === 'canceled' && <span className="text-xs text-gray-500">Canceled</span>}
+                        {f.status === 'error' && <span className="text-xs text-destructive">Error</span>}
+
+                        {f.status === 'uploading' && (
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCancelUpload(f.path)}>
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
-                      {f.status === 'uploading' && <Progress value={f.progress} className="h-2 mt-1" />}
+                      {(f.status === 'uploading' || f.status === 'summarizing') && <Progress value={f.progress} className="h-2 mt-1" />}
                   </div>
                 ))}
                </div>
