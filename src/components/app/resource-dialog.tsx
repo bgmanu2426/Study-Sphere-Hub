@@ -26,10 +26,13 @@ type ResourceDialogProps = {
 };
 
 function ResourceItem({ resource }: { resource: ResourceFile }) {
+    if (!resource || !resource.url) {
+        return null; // Don't render if resource or url is invalid
+    }
     return (
         <div className="flex flex-col gap-2">
             <Button asChild variant="outline" className="justify-start text-left h-auto">
-                <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-start">
+                <Link href={resource.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-start p-2">
                     <span className='font-semibold'>{resource.name}</span>
                     {resource.summary && (
                         <span className="text-xs text-muted-foreground mt-1 line-clamp-2">{resource.summary}</span>
