@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { CourseSelector } from './course-selector';
 import { ResourceList } from './resource-list';
-import { resources, Subject } from '@/lib/data';
+import { Subject } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
 
 export function HomePageClient() {
   const [selectedFilters, setSelectedFilters] = useState<{
@@ -15,19 +16,34 @@ export function HomePageClient() {
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSearch = (filters: { scheme: string; branch: string; year: string; semester: string }) => {
+  const handleSearch = async (filters: { scheme: string; branch: string; year: string; semester: string }) => {
     setIsLoading(true);
     setSelectedFilters(filters);
     
-    // Simulate network delay
-    setTimeout(() => {
-        const { scheme, branch, semester } = filters;
-        
-        const result = resources[scheme]?.[branch]?.[semester] || [];
-        setSubjects(result);
-        setIsLoading(false);
-    }, 500);
+    try {
+      const { scheme, branch, semester } = filters;
+      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch resources.');
+      }
+      
+      const data = await response.json();
+      setSubjects(data);
+
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not fetch resources. Please try again later.',
+      });
+      setSubjects([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
