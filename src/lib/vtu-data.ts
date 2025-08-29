@@ -155,10 +155,26 @@ export const vtuResources = {
           },
         },
       ],
-      '5': [],
-      '6': [],
-      '7': [],
-      '8': [],
+      '5': [
+        { id: '22CS51', name: 'Database Management Systems', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS52', name: 'Computer Networks', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS53', name: 'Principles of Programming using C++', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS54', name: 'Theory of Computation', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
+      '6': [
+        { id: '22CS61', name: 'Cryptography and Network Security', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS62', name: 'AI and ML', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS63', name: 'Web Technologies', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS64', name: 'Software Engineering', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
+      '7': [
+        { id: '22CS71', name: 'Cloud Computing', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CS72', name: 'Big Data Analytics', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
+      '8': [
+         { id: '22CS81', name: 'Technical Seminar', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+         { id: '22CS82', name: 'Project Work', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
     },
     ise: {
       '1': [
@@ -313,8 +329,17 @@ export const vtuResources = {
           },
         },
       ],
-      '5': [],
-      '6': [],
+      '5': [
+        { id: '22IS51', name: 'Database Management Systems', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22IS52', name: 'Computer Networks', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22IS53', name: 'Software Engineering', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22IS54', name: 'Theory of Computation', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
+      '6': [
+        { id: '22IS61', name: 'Cryptography and Network Security', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22IS62', name: 'AI and ML', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22IS63', name: 'Web Technologies', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+      ],
       '7': [],
       '8': [],
     },
@@ -361,7 +386,6 @@ export const vtuResources = {
           id: '22ME32',
           name: 'Material Science and Metallurgy',
           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
-          questionPapers: { current: '#', previous: '#' },
           questionPapers: { current: '#', previous: '#' },
         },
         {
@@ -553,7 +577,20 @@ export const vtuResources = {
           },
         },
       ],
-      '8': [],
+      '8': [
+        {
+          id: '21CS81',
+          name: 'Internet of Things',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' }
+        },
+        {
+          id: '21CS82',
+          name: 'Project Work',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' }
+        },
+      ],
     },
     ise: {
         '1': [], '2': [], '3': [], '4': [],
@@ -666,7 +703,20 @@ export const vtuResources = {
                 },
             }
           ],
-        '7': [],
+        '7': [
+          {
+          id: '21IS71',
+          name: 'Artificial Intelligence and Machine Learning',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' }
+          },
+          {
+            id: '21IS72',
+            name: 'Cloud Computing',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' }
+          },
+        ],
         '8': [],
     },
     ece: {
