@@ -33,6 +33,18 @@ export const vtuResources = {
             name: 'Communicative English',
             notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
             questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22PWS16',
+            name: 'Professional Writing Skills in English',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22SFC17',
+            name: 'Scientific Foundations of Health',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
         }
       ],
       '2': [
@@ -43,7 +55,7 @@ export const vtuResources = {
           questionPapers: { current: '#', previous: '#' },
         },
         {
-          id: '22CHE22',
+          id: '22CHES22',
           name: 'Chemistry for Computer Science Stream',
           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
           questionPapers: { current: '#', previous: '#' },
@@ -62,14 +74,26 @@ export const vtuResources = {
         },
         {
             id: '22IDT25',
-            name: 'Scientific Foundations of Health',
+            name: 'Innovation and Design Thinking',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22CIP26',
+            name: 'Constitution of India and Professional Ethics',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22ENGL27',
+            name: 'English Language Skills',
             notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
             questionPapers: { current: '#', previous: '#' },
         }
       ],
       '3': [
         {
-          id: '22CS31',
+          id: '22MA31',
           name: 'Transform Calculus, Fourier Series and Numerical Techniques',
           notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-3rd-sem-2022-scheme-notes/22mat31-vtu-notes/#Module_1',
@@ -129,11 +153,18 @@ export const vtuResources = {
           },
         },
         { id: '22CSL35', name: 'Data Structures Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '22KSK36', name: 'Samskrutika Kannada', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
+        { id: '22KSK36', name: 'Samskrutika Kannada', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CIP36', name: 'Constitution of India and Professional Ethics (CIP)', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
       ],
       '4': [
         {
-          id: '22CS41',
+          id: '22MA41',
+          name: 'Mathematical and Statistical Techniques',
+           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' }
+        },
+        {
+          id: '22CS42',
           name: 'Design and Analysis of Algorithms',
            notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-4th-sem-2022-scheme-notes/22cs41-vtu-notes/#Module_1',
@@ -148,7 +179,7 @@ export const vtuResources = {
           },
         },
         {
-          id: '22CS42',
+          id: '22CS43',
           name: 'Microcontroller and Embedded Systems',
            notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-4th-sem-2022-scheme-notes/22cs42-vtu-notes/#Module_1',
@@ -163,7 +194,7 @@ export const vtuResources = {
           },
         },
         {
-          id: '22CS43',
+          id: '22CS44',
           name: 'Operating Systems',
            notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-4th-sem-2022-scheme-notes/22cs43-vtu-notes/#Module_1',
@@ -178,8 +209,8 @@ export const vtuResources = {
           },
         },
         {
-          id: '22CS44',
-          name: 'Object Oriented Concepts',
+          id: '22CS45',
+          name: 'Object Oriented Concepts with Java',
            notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-4th-sem-2022-scheme-notes/22cs44-vtu-notes/#Module_1',
             module2: 'https://vtucircle.com/2022-scheme-notes/b-e-4th-sem-2022-scheme-notes/22cs44-vtu-notes/#Module_2',
@@ -192,8 +223,9 @@ export const vtuResources = {
             previous: 'https://vtucircle.com/2022-scheme-question-papers/4th-sem-2022-scheme-question-papers/',
           },
         },
-        { id: '22CSL45', name: 'Design and Analysis of Algorithms Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '22KBK46', name: 'Balake Kannada', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
+        { id: '22CSL46', name: 'Design and Analysis of Algorithms Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22KBK47', name: 'Balake Kannada', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '22CIP47', name: 'Constitution of India and Professional Ethics (CIP)', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
       ],
       '5': [
         { id: '22CS51', name: 'Database Management Systems', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
@@ -253,7 +285,7 @@ export const vtuResources = {
           questionPapers: { current: '#', previous: '#' },
         },
         {
-          id: '22CHE22',
+          id: '22CHES22',
           name: 'Chemistry for Computer Science Stream',
           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
           questionPapers: { current: '#', previous: '#' },
@@ -267,7 +299,7 @@ export const vtuResources = {
       ],
       '3': [
         {
-          id: '22CS31',
+          id: '22MA31',
           name: 'Transform Calculus, Fourier Series and Numerical Techniques',
           notes: {
             module1: 'https://vtucircle.com/2022-scheme-notes/b-e-3rd-sem-2022-scheme-notes/22mat31-vtu-notes/#Module_1',
@@ -558,7 +590,8 @@ export const vtuResources = {
           },
         },
         { id: '21CSL55', name: 'Database Management Systems Lab', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '21RMI56', name: 'Research Methodology & IPR', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
+        { id: '21RMI56', name: 'Research Methodology & IPR', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CIV57', name: 'Environmental Studies', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
       ],
        '6': [
         {
@@ -608,7 +641,8 @@ export const vtuResources = {
         },
         { id: '21CS64', name: 'Professional Elective-I', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
         { id: '21CS65', name: 'Open Elective-A', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '21CSL66', name: 'Computer Graphics Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
+        { id: '21CSL66', name: 'Computer Graphics Laboratory with mini-project', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CSL67', name: 'Web Technologies Laboratory with mini-project', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
       ],
       '7': [
         {
@@ -643,7 +677,9 @@ export const vtuResources = {
         },
         { id: '21CS73', name: 'Professional Elective - II', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
         { id: '21CS74', name: 'Professional Elective - III', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '21CSL75', name: 'AIML Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
+        { id: '21CSL75', name: 'AIML Laboratory', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CSL76', name: 'Project Work Phase - 1', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CSI77', name: 'Internship', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } }
       ],
       '8': [
         {
@@ -654,12 +690,12 @@ export const vtuResources = {
         },
         {
           id: '21CS82',
-          name: 'Project Work',
+          name: 'Project Work Phase - 2',
           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
           questionPapers: { current: '#', previous: '#' }
         },
-        { id: '21CS83', name: 'Technical Seminar', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
-        { id: '21CS84', name: 'Internship', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CSS83', name: 'Technical Seminar', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
+        { id: '21CSI84', name: 'Internship', notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' }, questionPapers: { current: '#', previous: '#' } },
       ],
     },
     ise: {
@@ -861,5 +897,3 @@ export const vtuResources = {
     }
   },
 };
-
-    
