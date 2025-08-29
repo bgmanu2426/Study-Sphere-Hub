@@ -252,11 +252,12 @@ export function UploadForm() {
     
     setIsSubmitting(false);
 
-    if (filesUploadedCount === allFilesToProcess.length) {
+    if (filesUploadedCount === allFilesToProcess.length && filesUploadedCount > 0) {
       toast({
         title: 'Upload Successful',
         description: `${filesUploadedCount} file(s) have been uploaded and processed.`,
       });
+      // Clear file inputs
       ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
       setUploadableFiles([]);
       fetchSubject(); // Refresh file list
