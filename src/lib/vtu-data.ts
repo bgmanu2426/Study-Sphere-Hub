@@ -1,5 +1,5 @@
 
-// Data from https://vtucircle.com/
+// Data from https://vtucircle.com/ and https://vtu.ac.in/
 export const vtuResources = {
   '2022': {
     cse: {
