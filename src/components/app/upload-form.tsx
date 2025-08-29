@@ -233,7 +233,7 @@ export function UploadForm() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select resource type" />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="notes">Notes</SelectItem>
