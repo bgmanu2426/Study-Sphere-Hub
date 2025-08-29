@@ -81,9 +81,7 @@ export const vtuResources = {
             name: 'Scientific Foundations of Health',
             notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
             questionPapers: { current: '#', previous: '#' },
-        }
-      ],
-      '2': [
+        },
         {
           id: 'BMATS201',
           name: 'Mathematics-II for CSE Stream',
@@ -163,6 +161,7 @@ export const vtuResources = {
             questionPapers: { current: '#', previous: '#' },
         }
       ],
+      '2': [],
       '3': [
         {
           id: '22MA31',
@@ -407,10 +406,8 @@ export const vtuResources = {
             name: 'Scientific Foundations of Health',
             notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
             questionPapers: { current: '#', previous: '#' },
-        }
-      ],
-      '2': [
-         {
+        },
+        {
           id: 'BMATS201',
           name: 'Mathematics-II for CSE Stream',
           notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
@@ -489,6 +486,7 @@ export const vtuResources = {
             questionPapers: { current: '#', previous: '#' },
         }
       ],
+      '2': [],
       '3': [
         {
           id: '22MA31',

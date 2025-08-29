@@ -20,15 +20,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { schemes, branches, years, semesters as allSemesters, cycles } from '@/lib/data';
+import { schemes, branches, years, semesters as allSemesters } from '@/lib/data';
 import { Loader2, Search } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
   branch: z.string().min(1, 'Please select a branch'),
   year: z.string().min(1, 'Please select a year'),
-  semester: z.string().min(1, 'Please select a semester or cycle'),
+  semester: z.string().min(1, 'Please select a semester'),
 });
 
 type CourseSelectorProps = {
@@ -49,13 +49,15 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
 
   const selectedYear = form.watch('year');
 
-  const availableSemesters = useMemo(() => {
-    if (!selectedYear) return [];
-    
+  useEffect(() => {
     if (selectedYear === '1') {
-      return cycles;
+      form.setValue('semester', '1');
     }
+  }, [selectedYear, form]);
 
+  const availableSemesters = useMemo(() => {
+    if (!selectedYear || selectedYear === '1') return [];
+    
     const yearNum = parseInt(selectedYear, 10);
     if (isNaN(yearNum)) return [];
     
@@ -138,7 +140,9 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
                     <FormLabel>Year</FormLabel>
                     <Select onValueChange={(value) => {
                         field.onChange(value);
-                        form.resetField('semester');
+                        if (value !== '1') {
+                            form.resetField('semester');
+                        }
                     }} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -162,10 +166,10 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{semesterLabel}</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedYear}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedYear || selectedYear === '1'}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={selectedYear ? `Select ${semesterLabel}` : "Select Year first"} />
+                          <SelectValue placeholder={selectedYear === '1' ? 'P & C Cycle' : (selectedYear ? `Select ${semesterLabel}`: "Select Year first")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -196,4 +200,3 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
     </Card>
   );
 }
-

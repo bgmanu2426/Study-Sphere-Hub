@@ -48,8 +48,7 @@ export const semesters = [
 ];
 
 export const cycles = [
-  { value: '1', label: 'P Cycle' },
-  { value: '2', label: 'C Cycle' },
+  { value: '1', label: 'P & C Cycle' },
 ];
 
 type Resources = {
