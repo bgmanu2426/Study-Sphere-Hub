@@ -322,7 +322,88 @@ export const vtuResources = {
       '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
     },
     me: {
-      '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
+      '1': [
+        {
+            id: '22MATE11',
+            name: 'Mathematics-I for ME Stream',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22MEE13',
+            name: 'Mechanical Engineering Science',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '2': [
+        {
+            id: '22MATE21',
+            name: 'Mathematics-II for ME Stream',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+        {
+            id: '22ELE23',
+            name: 'Basic Electrical Engineering',
+            notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+            questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '3': [
+        {
+          id: '22MATME31',
+          name: 'Mathematical Techniques',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME32',
+          name: 'Material Science and Metallurgy',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME33',
+          name: 'Basic Thermodynamics',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME34',
+          name: 'Mechanics of Materials',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '4': [
+        {
+          id: '22ME41',
+          name: 'Applied Thermodynamics',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME42',
+          name: 'Kinematics of Machines',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME43',
+          name: 'Fluid Mechanics',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '22ME44',
+          name: 'Manufacturing Technology',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '5': [], '6': [], '7': [], '8': [],
     },
     cv: {
       '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
@@ -592,7 +673,68 @@ export const vtuResources = {
       '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
     },
     me: {
-      '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
+      '1': [], '2': [], '3': [], '4': [],
+      '5': [
+        {
+          id: '21ME51',
+          name: 'Management and Economics',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME52',
+          name: 'Design of Machine Elements I',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME53',
+          name: 'Dynamics of Machinery',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME54',
+          name: 'Turbo Machines',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '6': [
+        {
+          id: '21ME61',
+          name: 'Design of Machine Elements II',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME62',
+          name: 'Heat Transfer',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME63',
+          name: 'Finite Element Methods',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '7': [
+        {
+          id: '21ME71',
+          name: 'Control Engineering',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+        {
+          id: '21ME72',
+          name: 'CAD/CAM',
+          notes: { module1: '#', module2: '#', module3: '#', module4: '#', module5: '#' },
+          questionPapers: { current: '#', previous: '#' },
+        },
+      ], 
+      '8': [],
     },
     cv: {
       '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [], '8': [],
