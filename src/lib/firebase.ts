@@ -1,11 +1,7 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApp, getApps } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,11 +11,28 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-if (typeof window !== 'undefined') {
-    getAnalytics(app);
+let firebaseApp: FirebaseApp;
+
+// Initialize Firebase only if all config values are present
+if (
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.storageBucket &&
+  firebaseConfig.messagingSenderId &&
+  firebaseConfig.appId
+) {
+  firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  if (typeof window !== 'undefined') {
+    isSupported().then(supported => {
+      if (supported) {
+        getAnalytics(firebaseApp);
+      }
+    });
+  }
+} else {
+  console.error("Firebase configuration is missing. Please check your .env file.");
 }
 
-
-export const firebaseApp = app;
+// Export the initialized app, or a placeholder if not initialized
+export { firebaseApp };
