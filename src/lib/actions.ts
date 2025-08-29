@@ -1,6 +1,9 @@
 'use server';
 
 import { vtuChatbot } from '@/ai/flows/vtu-chatbot';
+import { summarizeResource } from '@/ai/flows/resource-summarization';
+import { getFileAsBuffer, updateFileSummary } from './firebase';
+import type pdf from 'pdf-parse';
 
 const VTU_RESOURCES_TEXT = `
 Visvesvaraya Technological University (VTU) is one of the largest technological universities in India.
@@ -37,5 +40,32 @@ export async function getChatbotResponse(
   } catch (error) {
     console.error('Chatbot action error:', error);
     return { error: 'An unexpected error occurred. Please try again.' };
+  }
+}
+
+export async function summarizeAndStore(filePath: string): Promise<{ success: boolean, error?: string }> {
+  try {
+    const fileBuffer = await getFileAsBuffer(filePath);
+    // Dynamically import pdf-parse only when needed.
+    const pdfParser = (await import('pdf-parse')).default;
+    const data = await pdfParser(fileBuffer);
+
+    if (!data.text) {
+      return { success: false, error: "Could not extract text from PDF." };
+    }
+
+    const { summary } = await summarizeResource({ resourceText: data.text });
+    
+    if (!summary) {
+       return { success: false, error: "AI failed to generate a summary." };
+    }
+
+    await updateFileSummary(filePath, summary);
+
+    return { success: true };
+
+  } catch (error) {
+    console.error("Summarization error:", error);
+    return { success: false, error: "An unexpected error occurred during summarization." };
   }
 }

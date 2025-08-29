@@ -24,12 +24,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { schemes, branches, years, semesters as allSemesters, cycles, Subject, ResourceFile } from '@/lib/data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, Bot } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseApp } from '@/lib/firebase';
 import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject } from 'firebase/storage';
 import { useDebounce } from 'use-debounce';
+import { summarizeAndStore } from '@/lib/actions';
 
 const fileSchema = z.array(z.instanceof(File)).optional();
 
@@ -65,7 +66,7 @@ type UploadableFile = {
   file: File;
   path: string;
   progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'error';
+  status: 'pending' | 'uploading' | 'complete' | 'summarizing' | 'error';
 }
 
 export function UploadForm() {
@@ -160,7 +161,6 @@ export function UploadForm() {
     }
   };
 
-
   const uploadFile = (fileToUpload: UploadableFile) => {
     return new Promise<void>((resolve, reject) => {
       const storage = getStorage(firebaseApp);
@@ -181,10 +181,23 @@ export function UploadForm() {
           );
           reject(error);
         },
-        () => {
+        async () => {
           setUploadableFiles(prevFiles => 
-            prevFiles.map(f => f.path === fileToUpload.path ? { ...f, progress: 100, status: 'complete' } : f)
+            prevFiles.map(f => f.path === fileToUpload.path ? { ...f, progress: 100, status: 'summarizing' } : f)
           );
+          
+          try {
+            await summarizeAndStore(fileToUpload.path);
+            setUploadableFiles(prevFiles => 
+              prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f)
+            );
+          } catch(e) {
+            console.error("Summarization failed for file:", fileToUpload.file.name, e);
+            setUploadableFiles(prevFiles => 
+              prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f)
+            );
+          }
+          
           resolve();
         }
       );
@@ -219,7 +232,7 @@ export function UploadForm() {
         return;
     }
 
-    const filesToUpload = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' as 'pending' | 'uploading' | 'complete' | 'error'}));
+    const filesToUpload = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' as 'pending' | 'uploading' | 'complete' | 'summarizing' | 'error' }));
     setUploadableFiles(filesToUpload);
     setIsSubmitting(true);
     
@@ -242,17 +255,16 @@ export function UploadForm() {
     if (filesUploadedCount === allFilesToProcess.length) {
       toast({
         title: 'Upload Successful',
-        description: `${filesUploadedCount} file(s) have been uploaded.`,
+        description: `${filesUploadedCount} file(s) have been uploaded and processed.`,
       });
-      // Reset form fields but keep selectors
       ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
-      setUploadableFiles([]);
+      // Don't reset all uploadable files, keep them to show completion
       fetchSubject(); // Refresh file list
     } else if (filesUploadedCount > 0) {
         toast({
         variant: 'destructive',
         title: 'Upload Incomplete',
-        description: `Only ${filesUploadedCount} of ${allFilesToProcess.length} files were uploaded.`,
+        description: `Only ${filesUploadedCount} of ${allFilesToProcess.length} files were processed.`,
       });
       fetchSubject();
     }
@@ -503,7 +515,7 @@ export function UploadForm() {
           </div>
         )}
        
-        {isSubmitting && uploadableFiles.length > 0 && (
+        {uploadableFiles.length > 0 && (
             <div className="space-y-4 rounded-lg border p-4">
                <h3 className="text-lg font-medium">Upload Progress</h3>
                <div className='space-y-2'>
@@ -511,12 +523,14 @@ export function UploadForm() {
                   <div key={f.path} className="w-full">
                       <div className="flex items-center gap-2 text-sm">
                         {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
+                        {f.status === 'summarizing' && <Bot className="w-4 h-4 animate-spin text-primary"/>}
                         {f.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
                         {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
                         <span className="truncate flex-1">{f.file.name}</span>
-                        <span className="text-muted-foreground">{Math.round(f.progress)}%</span>
+                        {f.status === 'uploading' && <span className="text-muted-foreground">{Math.round(f.progress)}%</span>}
+                        {f.status === 'summarizing' && <span className="text-muted-foreground text-primary">Summarizing...</span>}
                       </div>
-                      <Progress value={f.progress} className="h-2 mt-1" />
+                      {f.status === 'uploading' && <Progress value={f.progress} className="h-2 mt-1" />}
                   </div>
                 ))}
                </div>

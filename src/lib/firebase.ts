@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getStorage, ref, listAll, getDownloadURL, ListResult, StorageReference } from "firebase/storage";
+import { getStorage, ref, listAll, getDownloadURL, getMetadata, updateMetadata, ListResult, StorageReference, getBytes } from "firebase/storage";
 import { Subject, ResourceFile } from "./data";
 
 const firebaseConfig = {
@@ -38,6 +38,17 @@ if (getApps().length === 0) {
     firebaseApp = getApp();
 }
 
+async function processFile(fileRef: StorageReference): Promise<ResourceFile> {
+    const url = await getDownloadURL(fileRef);
+    let summary: string | undefined = undefined;
+    try {
+        const metadata = await getMetadata(fileRef);
+        summary = metadata.customMetadata?.summary;
+    } catch(e) {
+        // No metadata or summary found
+    }
+    return { name: fileRef.name, url, summary };
+}
 
 async function processSubjectFolder(subjectFolder: StorageReference): Promise<Subject> {
     const subjectName = subjectFolder.name;
@@ -52,8 +63,8 @@ async function processSubjectFolder(subjectFolder: StorageReference): Promise<Su
             if (moduleFiles.items.length > 0) {
                 // Assuming one file per module folder for simplicity in this structure
                 const fileRef = moduleFiles.items[0];
-                const url = await getDownloadURL(fileRef);
-                notes[moduleFolder.name] = { name: fileRef.name, url };
+                const fileData = await processFile(fileRef);
+                notes[moduleFolder.name] = fileData;
             }
         }
     } catch (e) {
@@ -64,8 +75,8 @@ async function processSubjectFolder(subjectFolder: StorageReference): Promise<Su
     try {
         const qpFiles = await listAll(qpFolderRef);
         for (const fileRef of qpFiles.items) {
-            const url = await getDownloadURL(fileRef);
-            questionPapers.push({ name: fileRef.name, url });
+            const fileData = await processFile(fileRef);
+            questionPapers.push(fileData);
         }
     } catch (e) {
         // qp folder might not exist, which is fine
@@ -91,13 +102,10 @@ export async function getFilesForSubject(path: string, subjectName?: string): Pr
       // Fetch a single subject
       const subjectFolderRef = ref(storage, `${path}/${subjectName}`);
       try {
-          // We don't list here, we just assume the folder exists and process it.
-          // A better check would be to get metadata, but this works for a positive case.
           const subject = await processSubjectFolder(subjectFolderRef);
           return [subject];
       } catch (error) {
           console.log(`No specific subject folder found for "${subjectName}", returning empty.`);
-          // This can happen if the folder doesn't exist, which is a valid case (no resources yet)
           return [];
       }
   } else {
@@ -111,6 +119,18 @@ export async function getFilesForSubject(path: string, subjectName?: string): Pr
   }
 }
 
+export async function getFileAsBuffer(filePath: string): Promise<Buffer> {
+    const storage = getStorage(firebaseApp);
+    const fileRef = ref(storage, filePath);
+    const bytes = await getBytes(fileRef);
+    return Buffer.from(bytes);
+}
+
+export async function updateFileSummary(filePath: string, summary: string): Promise<void> {
+    const storage = getStorage(firebaseApp);
+    const fileRef = ref(storage, filePath);
+    await updateMetadata(fileRef, { customMetadata: { summary } });
+}
 
 // Export the initialized app, or a placeholder if not initialized
 export { firebaseApp };

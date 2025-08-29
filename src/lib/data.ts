@@ -2,6 +2,7 @@
 export type ResourceFile = {
   name: string;
   url: string;
+  summary?: string;
 }
 
 export type Subject = {
