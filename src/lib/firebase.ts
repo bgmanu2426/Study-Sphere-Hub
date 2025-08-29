@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApp, getApps, FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getStorage, ref, listAll, getDownloadURL, getMetadata, updateMetadata, ListResult, StorageReference, getBytes } from "firebase/storage";
+import { getStorage, ref, listAll, getDownloadURL, getMetadata, updateMetadata, ListResult, StorageReference, getBytes, deleteObject } from "firebase/storage";
 import { Subject, ResourceFile } from "./data";
 
 const firebaseConfig = {
@@ -132,5 +132,13 @@ export async function updateFileSummary(filePath: string, summary: string): Prom
     await updateMetadata(fileRef, { customMetadata: { summary } });
 }
 
+export async function deleteFileByPath(filePath: string): Promise<void> {
+    const storage = getStorage(firebaseApp);
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
+}
+
 // Export the initialized app, or a placeholder if not initialized
 export { firebaseApp };
+
+    

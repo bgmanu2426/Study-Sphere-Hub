@@ -258,7 +258,7 @@ export function UploadForm() {
         description: `${filesUploadedCount} file(s) have been uploaded and processed.`,
       });
       ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
-      // Don't reset all uploadable files, keep them to show completion
+      setUploadableFiles([]);
       fetchSubject(); // Refresh file list
     } else if (filesUploadedCount > 0) {
         toast({
@@ -271,13 +271,18 @@ export function UploadForm() {
   }
 
   const renderExistingFiles = (files: { [key: string]: ResourceFile } | ResourceFile[], isNotes: boolean) => {
-    const fileList = isNotes ? Object.values(files as { [key: string]: ResourceFile }) : (files as ResourceFile[]);
+    const fileList = isNotes ? Object.values(files as { [key: string]: ResourceFile }).filter(f => f) : (files as ResourceFile[]);
     if (fileList.length === 0) return <p className="text-sm text-muted-foreground">No existing files.</p>;
 
     return (
       <div className="space-y-2">
         {fileList.map((file) => {
-          const filePath = `resources/${watchedFields.scheme}/${watchedFields.branch}/${watchedFields.semester}/${watchedFields.subject}/${isNotes ? 'notes' : 'questionPapers'}/${file.name}`;
+          if (!file) return null;
+          const moduleName = isNotes ? Object.keys(files as { [key: string]: ResourceFile }).find(key => (files as any)[key] === file) : '';
+          const filePath = isNotes 
+            ? `resources/${watchedFields.scheme}/${watchedFields.branch}/${watchedFields.semester}/${watchedFields.subject}/notes/${moduleName}/${file.name}`
+            : `resources/${watchedFields.scheme}/${watchedFields.branch}/${watchedFields.semester}/${watchedFields.subject}/questionPapers/${file.name}`;
+          
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
               <span className="truncate">{file.name}</span>
@@ -443,7 +448,7 @@ export function UploadForm() {
               <h3 className="text-lg font-medium">Module Notes</h3>
               {isFetchingSubject && <Loader2 className="ml-2 h-5 w-5 animate-spin" />}
             </div>
-            <FormDescription>Upload one or more PDF files for each module. Existing files can be deleted.</FormDescription>
+            <FormDescription>Upload one PDF file for each module. Uploading a new file will replace the existing one.</FormDescription>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[1, 2, 3, 4, 5].map((moduleNumber) => {
                  const moduleName = `module${moduleNumber}`;
@@ -461,7 +466,7 @@ export function UploadForm() {
                                 <Input 
                                     type="file" 
                                     accept="application/pdf"
-                                    multiple
+                                    multiple={false} // Allow only single file upload
                                     disabled={isSubmitting}
                                     onChange={(e) => onChange(e.target.files ? Array.from(e.target.files) : [])}
                                     {...rest}
@@ -472,7 +477,7 @@ export function UploadForm() {
                             )}
                         />
                          <div className="space-y-2 pt-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground">EXISTING FILES</h4>
+                            <h4 className="text-xs font-semibold text-muted-foreground">EXISTING FILE</h4>
                              {renderExistingFiles(existingNotesForModule, true)}
                         </div>
                     </div>
@@ -551,3 +556,5 @@ export function UploadForm() {
     </Form>
   );
 }
+
+    
