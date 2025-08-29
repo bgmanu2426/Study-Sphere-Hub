@@ -21,14 +21,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { schemes, branches, years, semesters } from '@/lib/data';
+import { schemes, branches, years, semesters as allSemesters } from '@/lib/data';
 import { Loader2, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
   branch: z.string().min(1, 'Please select a branch'),
+  year: z.string().min(1, 'Please select a year'),
   semester: z.string().min(1, 'Please select a semester'),
   subject: z.string().min(1, 'Please enter a subject name'),
   resourceType: z.enum(['notes', 'questionPaper']),
@@ -44,12 +45,29 @@ export function UploadForm() {
     defaultValues: {
       scheme: '',
       branch: '',
+      year: '',
       semester: '',
       subject: '',
       resourceType: 'notes',
       file: undefined,
     },
   });
+
+  const selectedYear = form.watch('year');
+
+  const availableSemesters = useMemo(() => {
+    if (!selectedYear) return [];
+    const yearNum = parseInt(selectedYear, 10);
+    if (isNaN(yearNum)) return [];
+    
+    const startSem = (yearNum - 1) * 2 + 1;
+    const endSem = startSem + 1;
+
+    return allSemesters.filter(s => {
+        const semNum = parseInt(s.value, 10);
+        return semNum >= startSem && semNum <= endSem;
+    });
+  }, [selectedYear]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -121,20 +139,47 @@ export function UploadForm() {
                   </FormItem>
                 )}
               />
+               <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Year</FormLabel>
+                    <Select onValueChange={(value) => {
+                        field.onChange(value);
+                        form.resetField('semester');
+                    }} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {years.map((y) => (
+                          <SelectItem key={y.value} value={y.value}>
+                            {y.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                     <FormMessage />
+                  </FormItem>
+                )}
+              />
             <FormField
                 control={form.control}
                 name="semester"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Semester</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedYear}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select Semester" />
+                          <SelectValue placeholder={selectedYear ? "Select Semester" : "Select Year first"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {semesters.map((s) => (
+                        {availableSemesters.map((s) => (
                           <SelectItem key={s.value} value={s.value}>
                             {s.label}
                           </SelectItem>
@@ -158,8 +203,7 @@ export function UploadForm() {
                   </FormItem>
                 )}
             />
-        </div>
-         <FormField
+             <FormField
                 control={form.control}
                 name="resourceType"
                 render={({ field }) => (
@@ -180,6 +224,8 @@ export function UploadForm() {
                   </FormItem>
                 )}
               />
+        </div>
+       
         <FormField
           control={form.control}
           name="file"
