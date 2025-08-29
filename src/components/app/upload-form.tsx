@@ -40,7 +40,7 @@ const formSchema = z.object({
 
 export function UploadForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
