@@ -28,7 +28,7 @@ import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, Bot, XCircle }
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseApp } from '@/lib/firebase';
-import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject, UploadTask } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject, UploadTask, getDownloadURL } from 'firebase/storage';
 import { useDebounce } from 'use-debounce';
 import { summarizeAndStore } from '@/lib/actions';
 
@@ -165,48 +165,52 @@ export function UploadForm() {
 
   const uploadFile = (fileToUpload: UploadableFile): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const storage = getStorage(firebaseApp);
-      const storageRef = ref(storage, fileToUpload.path);
-      const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
+        const storage = getStorage(firebaseApp);
+        const storageRef = ref(storage, fileToUpload.path);
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
 
-      // Update file state to include the task and set status to 'uploading'
-      setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'uploading', task: uploadTask } : f));
+        setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'uploading', task: uploadTask } : f));
 
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, progress } : f));
-        },
-        (error) => {
-          console.error(`Upload Error for ${fileToUpload.file.name}:`, error);
-          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
-          reject(error);
-        },
-        async () => {
-          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'summarizing', progress: 100 } : f));
-          
-          try {
-            await summarizeAndStore(fileToUpload.path);
-            setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f));
-             toast({
-                title: 'Upload Successful',
-                description: `Successfully uploaded and processed "${fileToUpload.file.name}".`,
-             });
-          } catch(e) {
-            console.error(`Summarization failed for ${fileToUpload.path}:`, e);
-            setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
-            toast({
-              variant: 'destructive',
-              title: `Processing failed for ${fileToUpload.file.name}`,
-              description: "The file was uploaded, but summarization failed."
-            });
-          }
-          
-          resolve();
-        }
-      );
+        uploadTask.on('state_changed',
+            (snapshot: UploadTaskSnapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, progress } : f));
+            },
+            (error) => {
+                console.error(`Upload Error for ${fileToUpload.file.name}:`, error);
+                setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
+                reject(error);
+            },
+            async () => {
+                try {
+                    setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'summarizing', progress: 100 } : f));
+                    
+                    const result = await summarizeAndStore(fileToUpload.path);
+
+                    if (result.success) {
+                        setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f));
+                        toast({
+                            title: 'Upload Successful',
+                            description: `Successfully uploaded and processed "${fileToUpload.file.name}".`,
+                        });
+                    } else {
+                        throw new Error(result.error || "Summarization failed.");
+                    }
+                } catch (e: any) {
+                    console.error(`Processing failed for ${fileToUpload.path}:`, e);
+                    setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
+                    toast({
+                        variant: 'destructive',
+                        title: `Processing failed for ${fileToUpload.file.name}`,
+                        description: e.message || "The file was uploaded, but processing failed."
+                    });
+                }
+                resolve();
+            }
+        );
     });
-  };
+};
+
 
   const handleCancelUpload = (path: string) => {
     const fileToCancel = uploadableFiles.find(f => f.path === path);
@@ -253,10 +257,11 @@ export function UploadForm() {
     const initialFiles: UploadableFile[] = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' }));
     setUploadableFiles(initialFiles);
     
-    const uploadPromises = initialFiles.map(uploadFile);
-
     try {
-        await Promise.all(uploadPromises);
+        for (const fileToUpload of initialFiles) {
+            await uploadFile(fileToUpload);
+        }
+
         toast({
           title: "All uploads complete",
           description: "All selected files have been processed.",
