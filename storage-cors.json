@@ -3,8 +3,9 @@
     "origin": [
       "http://localhost:3000",
       "http://localhost:9002",
-      "https://6000-firebase-studio-1756407906627.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev",
-      "*"
+      "https://*.google.com",
+      "https://*.firebaseapp.com",
+      "https://*.cloudworkstations.dev"
     ],
     "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "responseHeader": [
