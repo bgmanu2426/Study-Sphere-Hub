@@ -24,12 +24,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { schemes, branches, years, semesters as allSemesters, cycles, Subject, ResourceFile } from '@/lib/data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, Bot, XCircle } from 'lucide-react';
+import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseApp, deleteFileByPath } from '@/lib/firebase';
+import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot } from "firebase/storage";
 import { useDebounce } from 'use-debounce';
-import { uploadFile } from '@/lib/actions';
+import { summarizeAndStore } from '@/lib/actions';
 
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
 
@@ -69,21 +70,6 @@ type UploadableFile = {
   progress: number;
   status: 'pending' | 'uploading' | 'complete' | 'error' | 'canceled';
 }
-
-// Helper to convert file to base64
-const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-        const result = (reader.result as string).split(',')[1];
-        if (!result) {
-            reject(new Error("Failed to read file as base64."));
-            return;
-        }
-        resolve(result);
-    };
-    reader.onerror = error => reject(error);
-});
 
 
 export function UploadForm() {
@@ -175,39 +161,54 @@ export function UploadForm() {
     }
   };
 
-const processSingleFile = async (fileToUpload: UploadableFile): Promise<void> => {
-    setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'uploading' } : f));
+  const processSingleFile = (fileToUpload: UploadableFile): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const storage = getStorage(firebaseApp);
+        const storageRef = ref(storage, fileToUpload.path);
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
 
-    try {
-        const fileContent = await toBase64(fileToUpload.file);
-        
-        const result = await uploadFile({
-            fileName: fileToUpload.path,
-            fileContent: fileContent,
-            contentType: fileToUpload.file.type,
-        });
+        uploadTask.on('state_changed',
+            (snapshot: UploadTaskSnapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'uploading', progress } : f));
+            },
+            (error) => {
+                console.error(`Upload failed for ${fileToUpload.file.name}:`, error);
+                setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
+                toast({
+                    variant: 'destructive',
+                    title: `Upload failed for ${fileToUpload.file.name}`,
+                    description: error.message
+                });
+                reject(error);
+            },
+            async () => {
+                setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete', progress: 100 } : f));
+                toast({
+                    title: 'Upload Successful',
+                    description: `Successfully uploaded "${fileToUpload.file.name}". Starting summarization...`,
+                });
 
-        if (result.success) {
-            setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete', progress: 100 } : f));
-            toast({
-                title: 'Upload Successful',
-                description: `Successfully uploaded "${fileToUpload.file.name}".`,
-            });
-        } else {
-            throw new Error(result.error || "Upload failed on the server.");
-        }
-    } catch (e: any) {
-        console.error(`Upload failed for ${fileToUpload.file.name}:`, e);
-        setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
-        toast({
-            variant: 'destructive',
-            title: `Upload failed for ${fileToUpload.file.name}`,
-            description: e.message || "An unexpected error occurred."
-        });
-        // Re-throw to stop the batch process
-        throw e;
-    }
-};
+                // Trigger summarization
+                try {
+                  const summarizationResult = await summarizeAndStore(fileToUpload.path);
+                  if (!summarizationResult.success) {
+                    console.warn(`Summarization failed for ${fileToUpload.path}: ${summarizationResult.error}`);
+                     toast({
+                        variant: 'destructive',
+                        title: 'Summarization Failed',
+                        description: `File ${fileToUpload.file.name} uploaded, but summarization failed.`,
+                    });
+                  }
+                } catch(e) {
+                   console.error('Caught exception during summarization call', e);
+                }
+
+                resolve(fileToUpload.path);
+            }
+        );
+    });
+  };
 
 
   async function onSubmit(values: FormValues) {
@@ -248,9 +249,8 @@ const processSingleFile = async (fileToUpload: UploadableFile): Promise<void> =>
     setUploadableFiles(initialFiles);
     
     try {
-        for (const fileToUpload of initialFiles) {
-            await processSingleFile(fileToUpload);
-        }
+        const uploadPromises = initialFiles.map(processSingleFile);
+        await Promise.all(uploadPromises);
 
         toast({
           title: "All uploads complete",
@@ -536,9 +536,7 @@ const processSingleFile = async (fileToUpload: UploadableFile): Promise<void> =>
                         {f.status === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
                         {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
                         <span className="truncate flex-1">{f.file.name}</span>
-                        {f.status === 'uploading' && <span className="text-muted-foreground">Uploading...</span>}
-                        {f.status === 'canceled' && <span className="text-xs text-gray-500">Canceled</span>}
-                        {f.status === 'error' && <span className="text-xs text-destructive">Error</span>}
+                        <span className="text-muted-foreground text-xs">{f.status}</span>
                       </div>
                       {(f.status === 'uploading') && <Progress value={f.progress} className="h-2 mt-1" />}
                   </div>

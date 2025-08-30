@@ -4,7 +4,6 @@
 import { vtuChatbot } from '@/ai/flows/vtu-chatbot';
 import { summarizeResource } from '@/ai/flows/resource-summarization';
 import { getFileAsBuffer, updateFileSummary } from './firebase';
-import { uploadFile as uploadFileFlow, UploadFileInput } from '@/ai/flows/upload-flow';
 
 const VTU_RESOURCES_TEXT = `
 Visvesvaraya Technological University (VTU) is one of the largest technological universities in India.
@@ -74,9 +73,4 @@ export async function summarizeAndStore(filePath: string): Promise<{ success: bo
     // We don't propagate the error to the client as the primary action (upload) was successful.
     return { success: false, error: "An unexpected error occurred during summarization." };
   }
-}
-
-
-export async function uploadFile(input: UploadFileInput): Promise<{ success: boolean, error?: string }> {
-    return uploadFileFlow(input);
 }
