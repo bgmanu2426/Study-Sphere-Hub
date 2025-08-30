@@ -32,7 +32,8 @@ import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot, deleteObject
 import { useDebounce } from 'use-debounce';
 import { summarizeAndStore } from '@/lib/actions';
 
-const fileSchema = z.array(z.instanceof(File)).optional();
+const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
+
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
@@ -41,34 +42,23 @@ const formSchema = z.object({
   semester: z.string().min(1, 'Please select a semester'),
   subject: z.string().min(1, 'Please enter a subject name'),
   resourceType: z.enum(['notes', 'questionPaper']),
-  questionPaperFile: z.instanceof(File).optional(),
+  questionPaperFile: fileSchema,
   module1Files: fileSchema,
   module2Files: fileSchema,
   module3Files: fileSchema,
   module4Files: fileSchema,
   module5Files: fileSchema,
 }).refine(data => {
-    // If we are in the middle of submitting, don't validate for file presence.
-    // The main validation happens inside onSubmit.
-    const hasNotesFiles = data.module1Files?.length || data.module2Files?.length || data.module3Files?.length || data.module4Files?.length || data.module5Files?.length;
-    const hasQpFiles = data.questionPaperFile && data.questionPaperFile.size > 0;
-    
-    // This logic ensures that if a resource type is selected, at least one file is attached for upload.
-    // It's tricky because the user could also just be managing existing files.
-    // A better check is in the onSubmit handler.
-    if(data.resourceType === 'notes' && hasNotesFiles) return true;
-    if(data.resourceType === 'questionPaper' && hasQpFiles) return true;
-    // If no files are selected for the active type, it might be an issue, but let's allow submission
-    // and check for files there, to avoid blocking users who just want to delete.
-    // The schema should be valid if the user isn't trying to upload empty.
-    const isTryingToUpload = (data.resourceType === 'notes' && hasNotesFiles) || (data.resourceType === 'questionPaper' && hasQpFiles);
-    
-    // A simplified check: if any file is present, it's fine. The submit handler will sort it out.
-    return hasNotesFiles || hasQpFiles || !isTryingToUpload;
-
+    if (data.resourceType === 'notes') {
+        return data.module1Files?.length || data.module2Files?.length || data.module3Files?.length || data.module4Files?.length || data.module5Files?.length;
+    }
+    if (data.resourceType === 'questionPaper') {
+        return data.questionPaperFile?.length;
+    }
+    return true; // Should not happen if resourceType is one of the enum values
 }, {
   message: 'Please select at least one file to upload for the chosen resource type.',
-  path: ['resourceType'],
+  path: ['resourceType'], // Point error to the most relevant field
 });
 
 
@@ -102,7 +92,7 @@ export function UploadForm() {
     },
   });
 
-  const { watch, resetField } = form;
+  const { watch, resetField, trigger } = form;
   const watchedFields = watch();
   const [debouncedSubjectQuery] = useDebounce(watchedFields.subject, 500);
 
@@ -173,52 +163,43 @@ export function UploadForm() {
     }
   };
 
-  const uploadFile = (fileToUpload: UploadableFile) => {
-    return new Promise<void>((resolve, reject) => {
+  const uploadFile = (fileToUpload: UploadableFile): Promise<void> => {
+    return new Promise((resolve, reject) => {
       const storage = getStorage(firebaseApp);
       const storageRef = ref(storage, fileToUpload.path);
       const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
 
-      setUploadableFiles(prevFiles => 
-        prevFiles.map(f => f.path === fileToUpload.path ? { ...f, task: uploadTask, status: 'uploading' } : f)
-      );
+      // Update file state to include the task and set status to 'uploading'
+      setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'uploading', task: uploadTask } : f));
 
       uploadTask.on('state_changed',
-        (snapshot: UploadTaskSnapshot) => {
+        (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadableFiles(prevFiles => 
-            prevFiles.map(f => f.path === fileToUpload.path ? { ...f, progress } : f)
-          );
+          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, progress } : f));
         },
         (error) => {
-           setUploadableFiles(prevFiles => 
-              prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: error.code === 'storage/canceled' ? 'canceled' : 'error' } : f)
-            );
+          console.error(`Upload Error for ${fileToUpload.file.name}:`, error);
+          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
           reject(error);
         },
         async () => {
-          setUploadableFiles(prevFiles => 
-            prevFiles.map(f => f.path === fileToUpload.path ? { ...f, progress: 100, status: 'summarizing' } : f)
-          );
+          setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'summarizing', progress: 100 } : f));
           
           try {
             await summarizeAndStore(fileToUpload.path);
-            toast({
-              title: 'Upload Successful',
-              description: `Successfully uploaded and summarized "${fileToUpload.file.name}".`,
-            });
-            setUploadableFiles(prevFiles => 
-              prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f)
-            );
-          } catch(e) {
-            console.error("Summarization failed for file:", fileToUpload.file.name, e);
+            setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f));
              toast({
+                title: 'Upload Successful',
+                description: `Successfully uploaded and processed "${fileToUpload.file.name}".`,
+             });
+          } catch(e) {
+            console.error(`Summarization failed for ${fileToUpload.path}:`, e);
+            setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f));
+            toast({
               variant: 'destructive',
-              title: `Summarization failed for ${fileToUpload.file.name}`,
+              title: `Processing failed for ${fileToUpload.file.name}`,
+              description: "The file was uploaded, but summarization failed."
             });
-            setUploadableFiles(prevFiles => 
-              prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'error' } : f)
-            );
           }
           
           resolve();
@@ -231,30 +212,35 @@ export function UploadForm() {
     const fileToCancel = uploadableFiles.find(f => f.path === path);
     if (fileToCancel && fileToCancel.task) {
       fileToCancel.task.cancel();
+      setUploadableFiles(prev => prev.map(f => f.path === path ? { ...f, status: 'canceled' } : f));
     }
   }
 
   async function onSubmit(values: FormValues) {
+     const isValid = await trigger();
+     if (!isValid) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fill all required fields and select at least one file.' });
+        return;
+     }
+    
     const allFilesToProcess: { file: File, path: string }[] = [];
     const basePath = `resources/${values.scheme}/${values.branch}/${values.semester}/${values.subject}`;
 
     if (values.resourceType === 'notes') {
-        const moduleFiles = [
-            { files: values.module1Files, name: 'module1' },
-            { files: values.module2Files, name: 'module2' },
-            { files: values.module3Files, name: 'module3' },
-            { files: values.module4Files, name: 'module4' },
-            { files: values.module5Files, name: 'module5' },
-        ];
-        for (const item of moduleFiles) {
-            if (item.files) {
-              for (const file of item.files) {
-                  allFilesToProcess.push({ file, path: `${basePath}/notes/${item.name}/${file.name}` });
-              }
+        const moduleFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files'];
+        moduleFields.forEach((field, index) => {
+            const files = values[field] as File[] | undefined;
+            if (files && files.length > 0) {
+                const moduleName = `module${index + 1}`;
+                files.forEach(file => {
+                   allFilesToProcess.push({ file, path: `${basePath}/notes/${moduleName}/${file.name}` });
+                });
             }
-        }
+        });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
-         allFilesToProcess.push({ file: values.questionPaperFile, path: `${basePath}/questionPapers/${values.questionPaperFile.name}` });
+         values.questionPaperFile.forEach(file => {
+            allFilesToProcess.push({ file, path: `${basePath}/questionPapers/${file.name}` });
+         });
     }
 
     if (allFilesToProcess.length === 0) {
@@ -267,30 +253,30 @@ export function UploadForm() {
     const initialFiles: UploadableFile[] = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' }));
     setUploadableFiles(initialFiles);
     
-    // Use a standard for...of loop to ensure uploads happen one by one
-    for (const fileToUpload of initialFiles) {
-      try {
-        await uploadFile(fileToUpload);
-      } catch (error: any) {
+    const uploadPromises = initialFiles.map(uploadFile);
+
+    try {
+        await Promise.all(uploadPromises);
+        toast({
+          title: "All uploads complete",
+          description: "All selected files have been processed.",
+        });
+    } catch(error: any) {
         if(error.code !== 'storage/canceled') {
-          toast({
+           toast({
               variant: 'destructive',
-              title: `Upload failed for ${fileToUpload.file.name}`,
-              description: error.message,
-          });
+              title: "An upload failed",
+              description: "One or more files failed to upload. Please check the list and try again.",
+           });
         }
-        break; // Stop further uploads if one fails
-      }
+    } finally {
+        // Clear form fields for files
+        ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
+        await fetchSubject(); // Refresh subject details to show newly uploaded files
+        setIsSubmitting(false);
+        // Clear progress indicators after a delay
+        setTimeout(() => setUploadableFiles([]), 5000);
     }
-    
-    // Clear form fields for files
-    ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
-    
-    await fetchSubject(); // Refresh subject details to show newly uploaded files
-    setIsSubmitting(false);
-    
-    // Clear progress indicators after a delay
-    setTimeout(() => setUploadableFiles([]), 5000);
   }
 
   const renderExistingFiles = (files: { [key: string]: ResourceFile } | ResourceFile[], isNotes: boolean) => {
@@ -526,12 +512,13 @@ export function UploadForm() {
                     <Input 
                       type="file" 
                       accept="application/pdf"
+                      multiple
                       disabled={isSubmitting}
-                      onChange={(e) => onChange(e.target.files?.[0])}
+                      onChange={(e) => onChange(e.target.files ? Array.from(e.target.files) : [])}
                       {...rest}
                     />
                   </FormControl>
-                  <FormDescription>Please upload a single PDF file.</FormDescription>
+                  <FormDescription>Please upload one or more PDF files.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -589,5 +576,3 @@ export function UploadForm() {
     </Form>
   );
 }
-
-    
