@@ -101,7 +101,6 @@ export function UploadForm() {
         const response = await fetch(`/api/resources?scheme=${watchedFields.scheme}&branch=${watchedFields.branch}&semester=${watchedFields.semester}&subject=${debouncedSubjectQuery}`);
         if(response.ok) {
           const data = await response.json();
-          // The API returns an array, we expect one or zero subjects.
           setExistingSubject(data.length > 0 ? data[0] : null);
         } else {
           setExistingSubject(null);
@@ -168,7 +167,6 @@ export function UploadForm() {
       const storageRef = ref(storage, fileToUpload.path);
       const uploadTask = uploadBytesResumable(storageRef, fileToUpload.file);
 
-      // Store the task so we can cancel it
       setUploadableFiles(prevFiles => 
         prevFiles.map(f => f.path === fileToUpload.path ? { ...f, task: uploadTask } : f)
       );
@@ -205,6 +203,10 @@ export function UploadForm() {
             setUploadableFiles(prevFiles => 
               prevFiles.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete' } : f)
             );
+            toast({
+              title: 'Upload Successful',
+              description: `Successfully uploaded "${fileToUpload.file.name}".`,
+            });
           } catch(e) {
             console.error("Summarization failed for file:", fileToUpload.file.name, e);
             setUploadableFiles(prevFiles => 
@@ -252,22 +254,17 @@ export function UploadForm() {
         toast({ variant: 'destructive', title: 'No files selected', description: 'Please select files to upload.' });
         return;
     }
-
+    
+    setIsSubmitting(true);
     const filesToUpload: UploadableFile[] = allFilesToProcess.map(f => ({ ...f, progress: 0, status: 'pending' }));
     setUploadableFiles(filesToUpload);
-    setIsSubmitting(true);
     
-    let anyError = false;
-
+    let allSucceeded = true;
     for (const fileToUpload of filesToUpload) {
       try {
         await uploadFile(fileToUpload);
-        toast({
-          title: 'Upload Successful',
-          description: `Successfully uploaded "${fileToUpload.file.name}".`,
-        });
       } catch (error: any) {
-        anyError = true;
+        allSucceeded = false;
         if(error.code !== 'storage/canceled') {
           toast({
               variant: 'destructive',
@@ -280,12 +277,12 @@ export function UploadForm() {
     
     setIsSubmitting(false);
     
-    // Clear form fields and refresh list after all uploads are attempted
     ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
-    if (!anyError && allFilesToProcess.length > 0) {
-      setUploadableFiles([]); // Clear progress list only if no errors
+    
+    if (allSucceeded && allFilesToProcess.length > 0) {
+      setUploadableFiles([]); 
     }
-    fetchSubject(); // Refresh the list of existing files
+    fetchSubject();
   }
 
   const renderExistingFiles = (files: { [key: string]: ResourceFile } | ResourceFile[], isNotes: boolean) => {
@@ -484,7 +481,7 @@ export function UploadForm() {
                                 <Input 
                                     type="file" 
                                     accept="application/pdf"
-                                    multiple={false} // Allow only single file upload
+                                    multiple={false}
                                     disabled={isSubmitting}
                                     onChange={(e) => onChange(e.target.files ? Array.from(e.target.files) : [])}
                                     {...rest}
@@ -584,5 +581,3 @@ export function UploadForm() {
     </Form>
   );
 }
-
-    
