@@ -100,7 +100,7 @@ export function UploadForm() {
     if (watchedFields.scheme && watchedFields.branch && watchedFields.semester && debouncedSubjectQuery) {
       setIsFetchingSubject(true);
       try {
-        const response = await fetch(`/api/resources?scheme=${watchedFields.scheme}&branch=${watchedFields.branch}&semester=${watchedFields.semester}&subject=${debouncedSubjectQuery}`);
+        const response = await fetch(`/api/resources?scheme=${watchedFields.scheme}&branch=${watchedFields.branch}&semester=${watchedFields.semester}&subject=${encodeURIComponent(debouncedSubjectQuery)}`);
         if(response.ok) {
           const data = await response.json();
           setExistingSubject(data.length > 0 ? data[0] : null);
