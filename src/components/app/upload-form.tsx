@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
 import { useDebounce } from 'use-debounce';
 import { ResourceMetadata, saveResourceMetadata } from '@/lib/actions';
+import Link from 'next/link';
 
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
 
@@ -323,7 +324,6 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           
-          // publicId is not consistently available on the file object from the existing API structure, so derive it.
           const urlParts = file.url.split('/upload/');
           if (urlParts.length < 2) return null;
           const publicIdWithVersion = urlParts[1];
@@ -333,7 +333,9 @@ export function UploadForm({ cloudName }: UploadFormProps) {
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-              <span className="truncate">{file.name}</span>
+              <Link href={file.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
+                {file.name}
+              </Link>
               <Button
                 type="button"
                 variant="ghost"
