@@ -35,13 +35,48 @@ export async function GET(request: Request) {
   }
 
   try {
-    const path = `resources/${scheme}/${branch}/${semester}`;
+    const basePath = `resources/${scheme}/${branch}/${semester}`;
     
-    // Fetch dynamic subjects from Cloudinary first
-    const dynamicSubjects = await getFilesForSubject(path, subjectName || undefined);
+    // Fetch dynamic subjects from Cloudinary
+    const dynamicSubjects = await getFilesForSubject(basePath, subjectName || undefined);
     
-    // For now, we only return dynamic subjects. Static data can be merged if needed.
-    return NextResponse.json(dynamicSubjects);
+    // Fetch static subjects unless a specific subject is being requested
+    const staticSubjects = subjectName ? [] : getStaticSubjects(scheme, branch, semester);
+
+    // Merge static and dynamic subjects
+    const subjectsMap = new Map<string, Subject>();
+
+    // First, add all static subjects to the map
+    for (const subject of staticSubjects) {
+        subjectsMap.set(subject.id, subject);
+    }
+
+    // Then, merge in dynamic subjects
+    for (const subject of dynamicSubjects) {
+        const existing = subjectsMap.get(subject.id);
+        if (existing) {
+            // Merge notes
+            Object.assign(existing.notes, subject.notes);
+            // Merge question papers, avoiding duplicates
+            const existingQpUrls = new Set(existing.questionPapers.map(qp => qp.url));
+            subject.questionPapers.forEach(qp => {
+                if (!existingQpUrls.has(qp.url)) {
+                    existing.questionPapers.push(qp);
+                }
+            });
+        } else {
+            subjectsMap.set(subject.id, subject);
+        }
+    }
+
+    const allSubjects = Array.from(subjectsMap.values());
+
+    // If a specific subject was requested, filter for it. Otherwise, return all.
+    const finalSubjects = subjectName 
+        ? allSubjects.filter(s => s.name.replace(/[^a-zA-Z0-9]/g, '') === subjectName.replace(/[^a-zA-Z0-9]/g, '')) 
+        : allSubjects;
+        
+    return NextResponse.json(finalSubjects);
 
   } catch (error) {
     console.error('Failed to retrieve resources:', error);
