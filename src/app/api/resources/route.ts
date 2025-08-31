@@ -73,12 +73,24 @@ export async function GET(request: Request) {
             const merged: Subject = {
                 id: dynamicSubject.id,
                 name: dynamicSubject.name,
+                // Start with static notes, then overwrite with dynamic notes.
                 notes: { ...formattedStaticSubject.notes, ...dynamicSubject.notes },
-                questionPapers: [...formattedStaticSubject.questionPapers, ...dynamicSubject.questionPapers],
+                 // Combine question papers, then filter out duplicates, prioritizing dynamic ones.
+                questionPapers: [
+                    ...dynamicSubject.questionPapers,
+                    ...formattedStaticSubject.questionPapers.filter(staticQP => 
+                        !dynamicSubject.questionPapers.some(dynamicQP => dynamicQP.name === staticQP.name)
+                    )
+                ]
             };
-            // De-duplicate question papers, prioritizing dynamic ones if names match
+            
+            // De-duplicate question papers by URL, prioritizing dynamic ones
             const qpMap = new Map<string, ResourceFile>();
-            merged.questionPapers.forEach(qp => qpMap.set(qp.name, qp));
+             merged.questionPapers.forEach(qp => {
+                if (!qpMap.has(qp.url)) { // Keep the first one encountered (dynamic first)
+                    qpMap.set(qp.url, qp);
+                }
+            });
             merged.questionPapers = Array.from(qpMap.values());
 
 
