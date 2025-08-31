@@ -42,37 +42,53 @@ export async function GET(request: Request) {
     const dynamicSubjects = await getFilesForSubject(path, subjectName || undefined);
     const dynamicSubjectsMap = new Map(dynamicSubjects.map(s => [s.id, s]));
 
-    // 2. Get static subjects
-    const staticSubjects = getStaticSubjects(scheme, branch, semester);
+    // 2. Get static subjects, but only if we are not filtering by a specific subject
+    // If a specific subject is requested, we rely only on Cloudinary to get the most up-to-date info.
+    const staticSubjects = subjectName ? [] : getStaticSubjects(scheme, branch, semester);
 
     // 3. Merge static and dynamic subjects
-    const allSubjects = staticSubjects.map(staticSubject => {
-      const dynamicSubject = dynamicSubjectsMap.get(staticSubject.id);
-      if (dynamicSubject) {
-        // If a dynamic subject exists, merge its notes and question papers
-        const mergedSubject = { ...staticSubject, ...dynamicSubject };
-        
-        // Deep merge notes and question papers
-        mergedSubject.notes = { ...staticSubject.notes, ...dynamicSubject.notes };
-        
-        // Combine question papers, avoiding duplicates
-        const qpMap = new Map<string, ResourceFile>();
-        staticSubject.questionPapers.forEach(qp => qpMap.set(qp.url, qp));
-        dynamicSubject.questionPapers.forEach(qp => qpMap.set(qp.url, qp));
-        mergedSubject.questionPapers = Array.from(qpMap.values());
-        
-        dynamicSubjectsMap.delete(staticSubject.id); // Remove from map to handle new subjects later
-        return mergedSubject;
-      }
-      return staticSubject;
+    const allSubjectsMap = new Map<string, Subject>();
+
+    // Add static subjects to the map first
+    staticSubjects.forEach(staticSubject => {
+        allSubjectsMap.set(staticSubject.id, staticSubject);
     });
 
-    // Add any new subjects from Cloudinary that weren't in the static list
-    const newSubjects = Array.from(dynamicSubjectsMap.values());
-    const combinedSubjects = [...allSubjects, ...newSubjects];
+    // Merge dynamic subjects into the map, overwriting static data
+    dynamicSubjectsMap.forEach((dynamicSubject, subjectId) => {
+        if (allSubjectsMap.has(subjectId)) {
+            // Subject exists, merge resources
+            const existingSubject = allSubjectsMap.get(subjectId)!;
+            
+            const mergedNotes = { ...existingSubject.notes };
+            for (const module in dynamicSubject.notes) {
+                mergedNotes[module] = dynamicSubject.notes[module];
+            }
+
+            const qpMap = new Map<string, ResourceFile>();
+            // Add existing first, so dynamic can overwrite if names match
+            existingSubject.questionPapers.forEach(qp => qpMap.set(qp.name, qp));
+            dynamicSubject.questionPapers.forEach(qp => qpMap.set(qp.name, qp));
+
+            existingSubject.notes = mergedNotes;
+            existingSubject.questionPapers = Array.from(qpMap.values());
+
+        } else {
+            // This is a completely new subject from Cloudinary
+            allSubjectsMap.set(subjectId, dynamicSubject);
+        }
+    });
+
+    let combinedSubjects = Array.from(allSubjectsMap.values());
 
     if (subjectName) {
+        // If a subject was specified, filter the merged list.
+        // This is more robust as it allows fetching a subject that might only exist in static data or only in cloudinary
         const filteredSubjects = combinedSubjects.filter(s => s.id.toLowerCase() === subjectName.toLowerCase() || s.name.toLowerCase() === subjectName.toLowerCase());
+        // If still no subject, it might be one that only exists in cloudinary and wasn't in static data
+        if(filteredSubjects.length === 0 && dynamicSubjectsMap.has(subjectName)) {
+            return NextResponse.json([dynamicSubjectsMap.get(subjectName)]);
+        }
         return NextResponse.json(filteredSubjects);
     }
     
