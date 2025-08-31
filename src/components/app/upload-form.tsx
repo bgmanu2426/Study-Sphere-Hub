@@ -185,6 +185,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         formData.append('file', file);
         formData.append('upload_preset', 'vtu_assistant');
         formData.append('public_id', publicId);
+        formData.append('resource_type', 'raw');
 
         const xhr = new XMLHttpRequest();
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
