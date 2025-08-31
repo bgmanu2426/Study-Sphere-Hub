@@ -30,7 +30,6 @@ import { useToast } from '@/hooks/use-toast';
 import { firebaseApp, deleteFileByPath } from '@/lib/firebase';
 import { getStorage, ref, uploadBytesResumable, UploadTaskSnapshot } from "firebase/storage";
 import { useDebounce } from 'use-debounce';
-import { summarizeAndStore } from '@/lib/actions';
 
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
 
@@ -186,24 +185,8 @@ export function UploadForm() {
                 setUploadableFiles(prev => prev.map(f => f.path === fileToUpload.path ? { ...f, status: 'complete', progress: 100 } : f));
                 toast({
                     title: 'Upload Successful',
-                    description: `Successfully uploaded "${fileToUpload.file.name}". Starting summarization...`,
+                    description: `Successfully uploaded "${fileToUpload.file.name}".`,
                 });
-
-                // Trigger summarization
-                try {
-                  const summarizationResult = await summarizeAndStore(fileToUpload.path);
-                  if (!summarizationResult.success) {
-                    console.warn(`Summarization failed for ${fileToUpload.path}: ${summarizationResult.error}`);
-                     toast({
-                        variant: 'destructive',
-                        title: 'Summarization Failed',
-                        description: `File ${fileToUpload.file.name} uploaded, but summarization failed.`,
-                    });
-                  }
-                } catch(e) {
-                   console.error('Caught exception during summarization call', e);
-                }
-
                 resolve(fileToUpload.path);
             }
         );
