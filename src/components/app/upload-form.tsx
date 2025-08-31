@@ -101,14 +101,13 @@ export function UploadForm({ cloudName }: UploadFormProps) {
   const [debouncedSubjectQuery] = useDebounce(watchedFields.subject, 500);
 
   const fetchSubject = useCallback(async () => {
-    const currentValues = getValues();
-    const subjectQuery = currentValues.subject;
+    const { scheme, branch, semester, subject } = getValues();
 
-    if (currentValues.scheme && currentValues.branch && currentValues.semester && subjectQuery) {
+    if (scheme && branch && semester && subject) {
       setIsFetchingSubject(true);
       try {
-        const response = await fetch(`/api/resources?scheme=${currentValues.scheme}&branch=${currentValues.branch}&semester=${currentValues.semester}&subject=${encodeURIComponent(subjectQuery)}`);
-        if(response.ok) {
+        const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}&subject=${encodeURIComponent(subject)}`);
+        if (response.ok) {
           const data = await response.json();
           setExistingSubject(data.length > 0 ? data[0] : null);
         } else {
@@ -121,12 +120,15 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         setIsFetchingSubject(false);
       }
     } else {
-      setExistingSubject(null);
+      setExistingSubject(null); // Clear if any of the required fields are missing
     }
   }, [getValues]);
 
+  // This effect will run whenever any of the dependency fields change.
   useEffect(() => {
-    if (debouncedSubjectQuery && watchedFields.scheme && watchedFields.branch && watchedFields.semester) {
+    const { scheme, branch, semester } = watchedFields;
+    // We use the debounced subject query to avoid excessive API calls while typing.
+    if (debouncedSubjectQuery && scheme && branch && semester) {
         fetchSubject();
     }
   }, [debouncedSubjectQuery, watchedFields.scheme, watchedFields.branch, watchedFields.semester, fetchSubject]);
@@ -161,7 +163,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     try {
       await deleteFileByPath(publicId);
       toast({ title: 'File Deleted', description: 'The file has been successfully deleted.' });
-      fetchSubject(); // Refresh the file list
+      await fetchSubject(); // Refresh the file list after deletion
     } catch (error) {
       console.error("Deletion failed:", error);
       toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the file. Please try again.' });
@@ -176,6 +178,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         formData.append('file', file);
         formData.append('upload_preset', 'vtu_assistant'); // Create an unsigned upload preset in Cloudinary
         formData.append('public_id', publicId);
+        formData.append('overwrite', 'true'); // Important: allows overwriting existing files
 
         const xhr = new XMLHttpRequest();
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
@@ -299,7 +302,8 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           // Cloudinary public_id is derived from the URL, assuming standard Cloudinary structure
-          const publicId = file.url.split('/upload/').pop()?.split('/').slice(1).join('/').replace(/\.pdf$/, '');
+          const publicId = file.url.split('/upload/').pop()?.split('/').slice(1).join('/').replace(/\.[^/.]+$/, '');
+
           if (!publicId) return null;
           
           return (
@@ -411,7 +415,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={selectedYear ? `Select ${semesterLabel}`: "Select Year first"} />
-                        </SelectTrigger>
+                        </Trigger>
                       </FormControl>
                       <SelectContent>
                         {availableSemesters.map((s) => (
