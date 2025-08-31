@@ -126,7 +126,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
   }, [getValues]);
 
   useEffect(() => {
-    if (debouncedSubjectQuery) {
+    if (debouncedSubjectQuery && watchedFields.scheme && watchedFields.branch && watchedFields.semester) {
         fetchSubject();
     }
   }, [debouncedSubjectQuery, watchedFields.scheme, watchedFields.branch, watchedFields.semester, fetchSubject]);
