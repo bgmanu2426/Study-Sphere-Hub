@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -134,9 +133,9 @@ export function UploadForm({ cloudName }: UploadFormProps) {
 
   useEffect(() => {
     if (watchedScheme && watchedBranch && watchedSemester && debouncedSubjectQuery) {
-      fetchSubject();
+        fetchSubject();
     } else {
-      setExistingSubject(null);
+        setExistingSubject(null);
     }
   }, [debouncedSubjectQuery, watchedScheme, watchedBranch, watchedSemester, fetchSubject]);
 
@@ -376,7 +375,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Branch" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {branches.map((b) => (
@@ -403,7 +402,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Year" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {years.map((y) => (
@@ -427,7 +426,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={selectedYear ? `Select ${semesterLabel}`: "Select Year first"} />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {availableSemesters.map((s) => (
@@ -464,7 +463,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select resource type" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="notes">Notes</SelectItem>
