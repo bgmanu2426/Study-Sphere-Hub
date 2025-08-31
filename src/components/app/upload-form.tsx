@@ -170,7 +170,9 @@ export function UploadForm() {
         formData.append('public_id', publicId);
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`, true);
+        // Construct the URL directly with your cloud name
+        xhr.open('POST', 'https://api.cloudinary.com/v1_1/djzpd5k3q/upload', true);
+
 
         xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) {
