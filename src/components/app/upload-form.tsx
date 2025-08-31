@@ -325,12 +325,9 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           
-          const urlParts = file.url.split('/upload/');
-          if (urlParts.length < 2) return null;
-          const publicIdWithVersion = urlParts[1];
-          const publicId = publicIdWithVersion.split('/').slice(1).join('/');
-
-          if (!publicId) return null;
+          const urlParts = file.url.match(/upload\/(v[0-9]+\/)?(.*)/);
+          if (!urlParts || !urlParts[2]) return null;
+          const publicId = urlParts[2];
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
@@ -608,3 +605,5 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     </Form>
   );
 }
+
+    
