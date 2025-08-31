@@ -1,6 +1,6 @@
 
 'use server';
-import { v2 as cloudinary } from './cloudinary-server';
+import { cloudinary } from './cloudinary-server';
 import { Subject, ResourceFile } from './data';
 
 async function processCloudinaryResource(resource: any): Promise<[string, string, ResourceFile] | null> {
