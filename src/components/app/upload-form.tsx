@@ -72,8 +72,12 @@ type UploadableFile = {
   status: 'pending' | 'uploading' | 'complete' | 'error' | 'canceled';
 }
 
+type UploadFormProps = {
+  cloudName: string;
+};
 
-export function UploadForm() {
+
+export function UploadForm({ cloudName }: UploadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadableFiles, setUploadableFiles] = useState<UploadableFile[]>([]);
   const { toast } = useToast();
@@ -170,8 +174,8 @@ export function UploadForm() {
         formData.append('public_id', publicId);
 
         const xhr = new XMLHttpRequest();
-        // Construct the URL directly with your cloud name
-        xhr.open('POST', 'https://api.cloudinary.com/v1_1/djzpd5k3q/upload', true);
+        const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
+        xhr.open('POST', url, true);
 
 
         xhr.upload.onprogress = (event) => {
