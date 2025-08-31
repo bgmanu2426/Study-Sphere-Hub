@@ -104,15 +104,15 @@ export function UploadForm({ cloudName }: UploadFormProps) {
   const watchedSubject = watch('subject');
 
   const [debouncedSubjectQuery] = useDebounce(watchedSubject, 500);
-  
+
   const fetchSubject = useCallback(async () => {
     const { scheme, branch, semester, subject } = getValues();
 
     if (!scheme || !branch || !semester || !subject) {
-        setExistingSubject(null);
-        return;
+      setExistingSubject(null);
+      return;
     }
-    
+
     setIsFetchingSubject(true);
     try {
       const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}&subject=${encodeURIComponent(subject)}`);
@@ -138,6 +138,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         setExistingSubject(null);
     }
   }, [debouncedSubjectQuery, watchedScheme, watchedBranch, watchedSemester, fetchSubject]);
+
 
 
   const selectedYear = form.watch('year');
@@ -182,11 +183,10 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     return new Promise((resolve, reject) => {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('upload_preset', 'vtu_assistant'); // Create an unsigned upload preset in Cloudinary
+        formData.append('upload_preset', 'vtu_assistant');
         formData.append('public_id', publicId);
 
         const xhr = new XMLHttpRequest();
-        // Use the 'raw' upload endpoint for non-image files like PDFs
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
         xhr.open('POST', url, true);
 
@@ -307,9 +307,10 @@ export function UploadForm({ cloudName }: UploadFormProps) {
       <div className="space-y-2">
         {fileList.map((file) => {
           if (!file || !file.url) return null;
-          // Cloudinary public_id is derived from the URL, assuming standard Cloudinary structure
-          const publicIdWithVersion = file.url.split('/upload/').pop();
-          if (!publicIdWithVersion) return null;
+          const urlParts = file.url.split('/upload/');
+          if (urlParts.length < 2) return null;
+
+          const publicIdWithVersion = urlParts[1];
           const publicId = publicIdWithVersion.split('/').slice(1).join('/').replace(/\.[^/.]+$/, '');
 
 
