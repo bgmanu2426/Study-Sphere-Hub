@@ -1,3 +1,4 @@
+
 # VTU Assistant
 
 Welcome to VTU Assistant, your one-stop solution for accessing academic resources for Visvesvaraya Technological University (VTU). This application is designed to help students easily find and share notes and question papers for various courses, schemes, and branches. It also features an AI-powered chatbot to answer questions about VTU.
@@ -77,9 +78,13 @@ This project requires environment variables to connect to Firebase and Cloudinar
 
 2.  **Cloudinary**:
     -   Go to the [Cloudinary website](https://cloudinary.com/), sign up for an account, and find your **Cloud Name**, **API Key**, and **API Secret** in the dashboard. Add these to your `.env` file.
-    -   In your Cloudinary settings, navigate to **Upload** and add a new **Upload Preset**.
-    -   Name the preset (e.g., `vtu_assistant`). This name must match the `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` value in your `.env` file.
-    -   Set the **Signing Mode** to `Unsigned`. This is crucial for allowing direct uploads from the browser.
+    -   In your Cloudinary settings, navigate to **Settings > Upload** and add a new **Upload Preset**.
+    -   Name the preset `vtu_assistant`. This name must match the `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` value in your `.env` file.
+    -   Set the **Signing Mode** to **`Unsigned`**. This is crucial for allowing direct uploads from the browser.
+    -   Set the **Access Control** setting to **`Public`**.
+    -   For **Resource Type**, ensure it is set to **`Auto`**.
+
+    > ⚠️ **Important Note on PDF Uploads**: The application is configured to upload files like PDFs to Cloudinary's `/raw/upload` endpoint. This ensures Cloudinary treats them as raw files and makes them accessible for viewing. If you modify the upload logic, ensure non-image files continue to use this endpoint to avoid "Blocked for delivery" errors.
 
 ### Running the Development Server
 
@@ -89,4 +94,4 @@ Once the setup is complete, you can run the application:
 npm run dev
 ```
 
-Open [http://localhost:9002](http://localhost:9002) (or your configured port) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) (or the port shown in your terminal, as it may differ from the default 9002).

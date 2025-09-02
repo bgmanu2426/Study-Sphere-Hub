@@ -24,7 +24,7 @@ function processCloudinaryResource(resource: any): Subject | null {
         name: context.name || resource.public_id,
         url: resource.secure_url,
         summary: context.summary || '',
-        publicId: context.publicid, // This is the crucial ID for deletion
+        publicId: resource.public_id, // ✅ FIX: Use the correct top-level public_id
     };
     
     if (context.resourcetype === 'notes' && context.module) {
