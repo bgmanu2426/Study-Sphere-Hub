@@ -221,10 +221,10 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('api_key', apiKey);
         formData.append('upload_preset', uploadPreset);
         formData.append('public_id', publicId);
-        formData.append('resource_type', 'raw');
+        formData.append('resource_type', 'raw'); // This is the crucial fix
 
         const xhr = new XMLHttpRequest();
-        const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+        const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`; // Use generic upload endpoint
         xhr.open('POST', url, true);
 
 
@@ -293,7 +293,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         return;
      }
     
-    const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
     const subjectName = availableSubjects.find(s => s.id === values.subject)?.name;
 
     if (!subjectName) {
@@ -302,6 +301,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     }
 
     const basePath = `resources/${values.scheme}/${values.branch}/${values.semester}/${subjectName}`;
+    const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
 
     if (values.resourceType === 'notes') {
         const moduleFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files'];
