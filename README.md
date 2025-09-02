@@ -6,7 +6,7 @@ Welcome to VTU Assistant, your one-stop solution for accessing academic resource
 
 -   **User Authentication**: Secure login and signup functionality for personalized access.
 -   **Dynamic Resource Finder**: A powerful search interface to filter resources by Scheme, Branch, Year, and Semester.
--   **Resource Uploading**: An intuitive form for users to contribute their own notes and question papers, which are stored securely in Firebase Storage.
+-   **Resource Uploading**: An intuitive form for users to contribute their own notes and question papers, which are stored securely in Cloudinary.
 -   **Dynamic Resource Display**: Fetches and displays available resources, including user-uploaded content and static links, in a clean, card-based layout.
 -   **AI-Powered Chatbot**: A Genkit-based AI assistant to help with queries related to VTU subjects and syllabus.
 -   **AI-Powered Summarization**: Uploaded PDF documents are automatically summarized using an AI flow to provide quick insights.
@@ -18,7 +18,8 @@ Welcome to VTU Assistant, your one-stop solution for accessing academic resource
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 -   **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
 -   **AI/Generative**: [Genkit](https://firebase.google.com/docs/genkit)
--   **Backend & Auth**: [Firebase](https://firebase.google.com/) (Authentication, Cloud Storage)
+-   **Authentication**: [Firebase Authentication](https://firebase.google.com/docs/auth)
+-   **File Storage**: [Cloudinary](https://cloudinary.com/)
 -   **Form Management**: [React Hook Form](https://react-hook-form.com/) with [Zod](https://zod.dev/) for validation
 
 ## Getting Started
@@ -29,7 +30,6 @@ Follow these instructions to get the project up and running on your local machin
 
 -   [Node.js](https://nodejs.org/) (v18 or later)
 -   `npm` or `yarn` package manager
--   [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (for the `gsutil` command)
 
 ### Installation
 
@@ -44,46 +44,40 @@ Follow these instructions to get the project up and running on your local machin
     npm install
     ```
 
-### Firebase Setup
+### Environment Setup
 
-This project requires a Firebase project to handle authentication and file storage.
+This project requires environment variables to connect to Firebase and Cloudinary.
 
-1.  **Create a Firebase Project**: If you haven't already, go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-
-2.  **Create a `.env` file**: Create a `.env` file in the root of the project and add your Firebase project's web app configuration keys. This file is used to securely load your Firebase credentials.
+1.  **Create a `.env` file**: Create a `.env` file in the root of the project.
+2.  **Add Configuration**: Copy and paste the following configuration into the `.env` file. You will need to replace the placeholder values with your actual credentials from Firebase and Cloudinary.
 
     ```env
+    # Firebase Configuration (for user authentication)
     NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project-id.firebaseapp.com"
     NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project-id.appspot.com"
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="..."
     NEXT_PUBLIC_FIREBASE_APP_ID="1:..."
+
+    # Cloudinary Configuration (for file storage)
+    # Get these from your Cloudinary dashboard
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-cloud-name"
+    SERVER_CLOUDINARY_API_KEY="your-api-key"
+    SERVER_CLOUDINARY_API_SECRET="your-api-secret"
     ```
 
-3.  **Enable Firebase Services**:
+### Service Setup
+
+1.  **Firebase**:
+    -   Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
     -   In the Firebase Console, go to **Authentication** and enable the **Email/Password** sign-in method.
-    -   Go to **Storage** and activate it to create your default storage bucket.
+    -   Find your web app configuration keys in the Project Settings and add them to your `.env` file.
 
-4.  **Set Storage CORS Permissions**: To allow file uploads from your local development environment, you must apply a CORS policy to your storage bucket.
-    -   Make sure the `storage-cors.json` file exists in your project root with the correct origins.
-    -   Run the following command, replacing `your-project-id.appspot.com` with your actual bucket name:
-        ```bash
-        gsutil cors set storage-cors.json gs://your-project-id.appspot.com
-        ```
-
-5.  **Set Storage Security Rules**: For development, you can use open rules to allow uploads. Go to **Storage -> Rules** in the Firebase Console and publish the following:
-    ```
-    rules_version = '2';
-    service firebase.storage {
-      match /b/{bucket}/o {
-        match /{allPaths=**} {
-          allow read, write: if true; // Insecure, for testing only
-        }
-      }
-    }
-    ```
-    **Note**: For production, you should restrict these rules (e.g., `if request.auth != null;`).
+2.  **Cloudinary**:
+    -   Go to the [Cloudinary website](https://cloudinary.com/), sign up for an account, and find your **Cloud Name**, **API Key**, and **API Secret** in the dashboard. Add these to your `.env` file.
+    -   In your Cloudinary settings, navigate to **Upload** and add a new **Upload Preset**.
+    -   Name the preset `vtu_assistant` and set the **Signing Mode** to `Unsigned`. This is crucial for allowing direct uploads from the browser.
 
 ### Running the Development Server
 
