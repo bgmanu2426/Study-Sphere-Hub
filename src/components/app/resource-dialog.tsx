@@ -7,11 +7,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Subject, ResourceFile } from '@/lib/data';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Book, FileText } from 'lucide-react';
 import { Separator } from '../ui/separator';
-import { Badge } from '../ui/badge';
 import {
   Accordion,
   AccordionContent,
@@ -49,16 +47,11 @@ function ResourceItem({ resource }: { resource: ResourceFile }) {
 }
 
 export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialogProps) {
-  const hasNotes = subject.notes && Object.values(subject.notes).some(r => r && r.url && r.url !== '#');
-  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.some(r => r && r.url && r.url !== '#');
+  const hasNotes = subject.notes && Object.values(subject.notes).length > 0;
+  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.length > 0;
 
-  const getValidNotesModules = () => {
-    if (!subject.notes) return [];
-    return Object.entries(subject.notes).filter(([_, resourceFile]) => resourceFile && resourceFile.url && resourceFile.url !=='#');
-  }
-
-  const validNotesModules = getValidNotesModules();
-
+  const notesModules = Object.entries(subject.notes || {}).sort(([a], [b]) => a.localeCompare(b));
+  const questionPapers = (subject.questionPapers || []).filter(qp => qp && qp.url);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -68,12 +61,12 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
           <DialogDescription>Resources for {subject.name}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-            {hasNotes && validNotesModules.length > 0 && (
+            {hasNotes && (
               <div>
                   <h4 className="font-semibold mb-2 flex items-center"><Book className="mr-2 h-4 w-4"/>Notes</h4>
                   <Separator />
                   <Accordion type="single" collapsible className="w-full">
-                     {validNotesModules.map(([module, resourceFile]) => (
+                     {notesModules.map(([module, resourceFile]) => (
                         <AccordionItem value={module} key={module}>
                             <AccordionTrigger>{`Module ${module.replace('module', '')}`}</AccordionTrigger>
                             <AccordionContent>
@@ -89,13 +82,13 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
                   <h4 className="font-semibold mb-2 flex items-center"><FileText className="mr-2 h-4 w-4"/>Question Papers</h4>
                   <Separator />
                   <div className="grid grid-cols-1 gap-2 mt-2">
-                      {subject.questionPapers.filter(qp => qp && qp.url && qp.url !== '#').map((qp, index) => (
+                      {questionPapers.map((qp, index) => (
                         <ResourceItem key={`${qp.url}-${index}`} resource={qp} />
                       ))}
                   </div>
               </div>
             )}
-            {(!hasNotes || validNotesModules.length === 0) && !hasQuestionPapers && (
+            {!hasNotes && !hasQuestionPapers && (
               <p className="text-center text-muted-foreground">No resources found for this subject yet.</p>
             )}
         </div>

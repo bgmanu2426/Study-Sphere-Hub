@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { CourseSelector } from './course-selector';
 import { ResourceList } from './resource-list';
-import { Subject } from '@/lib/data';
+import { Subject, ResourceFile } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { vtuResources } from '@/lib/vtu-data';
 
@@ -30,13 +30,17 @@ export function HomePageClient() {
     return semesterData.map((s: any) => ({
       id: s.id,
       name: s.name,
-      notes: Object.entries(s.notes).reduce((acc, [key, value]) => {
-        if (value && value !== '#') {
-          acc[key] = { name: key, url: value as string, summary: '' };
-        }
-        return acc;
-      }, {} as { [module: string]: any }),
-      questionPapers: (s.questionPapers.current ? [{ name: 'Current', url: s.questionPapers.current, summary: '' }, { name: 'Previous', url: s.questionPapers.previous, summary: '' }] : []).filter(qp => qp.url !== '#'),
+      notes: {
+        module1: { name: 'Module 1', url: s.notes?.module1 || '#', summary: '' },
+        module2: { name: 'Module 2', url: s.notes?.module2 || '#', summary: '' },
+        module3: { name: 'Module 3', url: s.notes?.module3 || '#', summary: '' },
+        module4: { name: 'Module 4', url: s.notes?.module4 || '#', summary: '' },
+        module5: { name: 'Module 5', url: s.notes?.module5 || '#', summary: '' },
+      },
+      questionPapers: [
+        { name: 'Current', url: s.questionPapers?.current || '#', summary: '' },
+        { name: 'Previous', url: s.questionPapers?.previous || '#', summary: '' },
+      ],
     }));
   }
 
@@ -46,6 +50,15 @@ export function HomePageClient() {
     
     try {
       const { scheme, branch, semester } = filters;
+      
+      // 1. Get the base structure from static data
+      const staticSubjects = getStaticSubjects(scheme, branch, semester);
+      const subjectsMap = new Map<string, Subject>();
+      staticSubjects.forEach(subject => {
+        subjectsMap.set(subject.name.trim(), JSON.parse(JSON.stringify(subject))); // Deep copy
+      });
+
+      // 2. Fetch dynamic resources from the API
       const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`);
       
       if (!response.ok) {
@@ -54,32 +67,39 @@ export function HomePageClient() {
       }
       
       const dynamicSubjects: Subject[] = await response.json();
-      const staticSubjects = getStaticSubjects(scheme, branch, semester);
 
-      const subjectsMap = new Map<string, Subject>();
-
-      // Add all static subjects to the map first
-      for (const subject of staticSubjects) {
-          subjectsMap.set(subject.name.trim(), JSON.parse(JSON.stringify(subject))); // Deep copy
-      }
-
-      // Merge dynamic subjects into the map
+      // 3. Merge dynamic subjects into the static structure
       for (const dynamicSubject of dynamicSubjects) {
           const subjectId = dynamicSubject.name.trim();
           const existingSubject = subjectsMap.get(subjectId);
 
           if (existingSubject) {
-              // If subject exists, merge notes and question papers
-              Object.assign(existingSubject.notes, dynamicSubject.notes);
+              // Merge notes
+              for (const moduleKey in dynamicSubject.notes) {
+                if (existingSubject.notes[moduleKey]) {
+                   existingSubject.notes[moduleKey] = dynamicSubject.notes[moduleKey];
+                }
+              }
 
-              const existingQpUrls = new Set(existingSubject.questionPapers.map(qp => qp.url));
-              dynamicSubject.questionPapers.forEach(qp => {
-                  if (!existingQpUrls.has(qp.url)) {
-                      existingSubject.questionPapers.push(qp);
-                  }
+              // Merge question papers, replacing placeholders
+              dynamicSubject.questionPapers.forEach(dynamicQp => {
+                const existingQpIndex = existingSubject.questionPapers.findIndex(
+                  qp => qp.name.toLowerCase() === dynamicQp.name.toLowerCase()
+                );
+                
+                // Add new QP if it doesn't exist already
+                const isAlreadyPresent = existingSubject.questionPapers.some(qp => qp.url === dynamicQp.url);
+                if (!isAlreadyPresent) {
+                     // Check if it's a named QP like 'June 2023' etc.
+                     const isNamedYearQP = !['current', 'previous'].includes(dynamicQp.name.toLowerCase());
+                     if (isNamedYearQP) {
+                        existingSubject.questionPapers.push(dynamicQp)
+                     }
+                }
               });
+
           } else {
-              // If subject does not exist, add it to the map
+              // If a dynamic subject doesn't exist in static data (e.g. elective), add it.
               subjectsMap.set(subjectId, dynamicSubject);
           }
       }
