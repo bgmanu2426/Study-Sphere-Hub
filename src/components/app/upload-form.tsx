@@ -29,7 +29,7 @@ import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle } from
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
-import { ResourceMetadata, saveResourceMetadata } from '@/lib/actions';
+import { saveResourceMetadata } from '@/lib/actions';
 import Link from 'next/link';
 
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
@@ -665,5 +665,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
+
+    
 
     

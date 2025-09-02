@@ -24,15 +24,15 @@ function processCloudinaryResource(resource: any): Subject | null {
         name: context.name || resource.public_id,
         url: resource.secure_url,
         summary: context.summary || '',
-        publicId: resource.public_id,
+        publicId: context.publicid,
     };
     
     if (context.resourcetype === 'notes' && context.module) {
         subject.notes[context.module] = fileData;
-    } else if (context.resourcetype === 'questionPaper') { // Note: 'questionPaper', not 'questionpaper'
+    } else if (context.resourcetype === 'questionPaper') {
         subject.questionPapers.push(fileData);
     } else {
-        return null; // Ignore if it's not a valid resource type for our app
+        return null; 
     }
     
     return subject;
@@ -103,5 +103,7 @@ export async function updateFileContext(publicId: string, context: Record<string
 export async function updateFileSummary(publicId: string, summary: string): Promise<void> {
     await updateFileContext(publicId, { summary });
 }
+
+    
 
     
