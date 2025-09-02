@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -188,6 +189,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     }
     setIsDeleting(publicId);
     try {
+      // The publicId for deletion must not have the file extension.
       const publicIdWithoutExt = publicId.substring(0, publicId.lastIndexOf('.'));
       await deleteFileByPath(publicIdWithoutExt);
       toast({ title: 'File Deleted', description: 'The file has been successfully deleted.' });
@@ -203,11 +205,23 @@ export function UploadForm({ cloudName }: UploadFormProps) {
   const processSingleFile = (file: File, publicId: string, moduleName?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
-        const subjectName = availableSubjects.find(s => s.id === subjectId)?.name || 'unknown-subject';
+        const subjectName = availableSubjects.find(s => s.id === subjectId)?.name;
+
+        if (!subjectName) {
+            const errorMsg = "Could not determine subject name for upload.";
+            console.error(errorMsg);
+            toast({ variant: 'destructive', title: 'Upload Error', description: errorMsg });
+            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error' } : f));
+            reject(new Error(errorMsg));
+            return;
+        }
+        
+        const publicIdWithoutExt = publicId.substring(0, publicId.lastIndexOf('.'));
+
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', 'vtu_assistant');
-        formData.append('public_id', publicId);
+        formData.append('public_id', publicIdWithoutExt);
         formData.append('resource_type', 'raw');
 
         const xhr = new XMLHttpRequest();
@@ -299,15 +313,13 @@ export function UploadForm({ cloudName }: UploadFormProps) {
             if (files && files.length > 0) {
                 const moduleName = `module${index + 1}`;
                 files.forEach(file => {
-                   const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
-                   allFilesToProcess.push({ file, publicId: `${basePath}/notes/${moduleName}/${fileNameWithoutExt}`, moduleName });
+                   allFilesToProcess.push({ file, publicId: `${basePath}/notes/${moduleName}/${file.name}`, moduleName });
                 });
             }
         });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
          values.questionPaperFile.forEach(file => {
-            const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
-            allFilesToProcess.push({ file, publicId: `${basePath}/questionPapers/${fileNameWithoutExt}` });
+            allFilesToProcess.push({ file, publicId: `${basePath}/questionPapers/${file.name}` });
          });
     }
 
@@ -356,7 +368,6 @@ export function UploadForm({ cloudName }: UploadFormProps) {
           if (!urlParts || !urlParts[1]) return null;
           
           const publicIdWithExt = decodeURIComponent(urlParts[1]);
-          const publicIdWithoutExt = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
@@ -368,10 +379,10 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => handleDelete(publicIdWithoutExt)}
-                disabled={isDeleting === publicIdWithoutExt}
+                onClick={() => handleDelete(publicIdWithExt)}
+                disabled={isDeleting === publicIdWithExt}
               >
-                {isDeleting === publicIdWithoutExt ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                {isDeleting === publicIdWithExt ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
