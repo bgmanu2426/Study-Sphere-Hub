@@ -63,7 +63,7 @@ This project requires environment variables to connect to Firebase and Cloudinar
     # Cloudinary Configuration (for file storage)
     # Get these from your Cloudinary dashboard
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-cloud-name"
-    SERVER_CLOUDINARY_API_KEY="your-api-key"
+    NEXT_PUBLIC_CLOUDINARY_API_KEY="your-api-key"
     SERVER_CLOUDINARY_API_SECRET="your-api-secret"
     ```
 

@@ -74,10 +74,11 @@ type UploadableFile = {
 
 type UploadFormProps = {
   cloudName: string;
+  apiKey: string;
 };
 
 
-export function UploadForm({ cloudName }: UploadFormProps) {
+export function UploadForm({ cloudName, apiKey }: UploadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadableFiles, setUploadableFiles] = useState<UploadableFile[]>([]);
   const { toast } = useToast();
@@ -189,9 +190,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     }
     setIsDeleting(publicId);
     try {
-      // The publicId for deletion must not have the file extension.
-      const publicIdWithoutExt = publicId.substring(0, publicId.lastIndexOf('.'));
-      await deleteFileByPath(publicIdWithoutExt);
+      await deleteFileByPath(publicId);
       toast({ title: 'File Deleted', description: 'The file has been successfully deleted.' });
       await fetchSubject(); // Refresh the file list after deletion
     } catch (error) {
@@ -220,6 +219,7 @@ export function UploadForm({ cloudName }: UploadFormProps) {
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('api_key', apiKey);
         formData.append('upload_preset', 'vtu_assistant');
         formData.append('public_id', publicIdWithoutExt);
         formData.append('resource_type', 'raw');

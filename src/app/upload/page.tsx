@@ -3,15 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 export default function UploadPage() {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
 
-  if (!cloudName) {
+  if (!cloudName || !apiKey) {
     return (
         <div className="container mx-auto p-4 md:p-8">
             <Card className="w-full max-w-2xl mx-auto shadow-lg">
                 <CardHeader>
                     <CardTitle className="text-3xl font-bold text-destructive">Configuration Error</CardTitle>
                     <CardDescription>
-                        Cloudinary cloud name is not configured. Please set the NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME environment variable.
+                        Cloudinary configuration is incomplete. Please ensure NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_API_KEY are set in your environment variables.
                     </CardDescription>
                 </CardHeader>
             </Card>
@@ -27,7 +28,7 @@ export default function UploadPage() {
           <CardDescription>Add your own notes and question papers to the system.</CardDescription>
         </CardHeader>
         <CardContent>
-          <UploadForm cloudName={cloudName} />
+          <UploadForm cloudName={cloudName} apiKey={apiKey} />
         </CardContent>
       </Card>
     </div>
