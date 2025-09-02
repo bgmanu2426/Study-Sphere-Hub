@@ -188,7 +188,8 @@ export function UploadForm({ cloudName }: UploadFormProps) {
     }
     setIsDeleting(publicId);
     try {
-      await deleteFileByPath(publicId);
+      const publicIdWithoutExt = publicId.substring(0, publicId.lastIndexOf('.'));
+      await deleteFileByPath(publicIdWithoutExt);
       toast({ title: 'File Deleted', description: 'The file has been successfully deleted.' });
       await fetchSubject(); // Refresh the file list after deletion
     } catch (error) {
@@ -298,15 +299,15 @@ export function UploadForm({ cloudName }: UploadFormProps) {
             if (files && files.length > 0) {
                 const moduleName = `module${index + 1}`;
                 files.forEach(file => {
-                   const fileNameWithExt = file.name;
-                   allFilesToProcess.push({ file, publicId: `${basePath}/notes/${moduleName}/${fileNameWithExt}`, moduleName });
+                   const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+                   allFilesToProcess.push({ file, publicId: `${basePath}/notes/${moduleName}/${fileNameWithoutExt}`, moduleName });
                 });
             }
         });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
          values.questionPaperFile.forEach(file => {
-            const fileNameWithExt = file.name;
-            allFilesToProcess.push({ file, publicId: `${basePath}/questionPapers/${fileNameWithExt}` });
+            const fileNameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.'));
+            allFilesToProcess.push({ file, publicId: `${basePath}/questionPapers/${fileNameWithoutExt}` });
          });
     }
 
@@ -354,7 +355,8 @@ export function UploadForm({ cloudName }: UploadFormProps) {
           const urlParts = file.url.match(/upload\/(?:v[0-9]+\/)?(.*)/);
           if (!urlParts || !urlParts[1]) return null;
           
-          const publicId = decodeURIComponent(urlParts[1]);
+          const publicIdWithExt = decodeURIComponent(urlParts[1]);
+          const publicIdWithoutExt = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.'));
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
@@ -366,10 +368,10 @@ export function UploadForm({ cloudName }: UploadFormProps) {
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => handleDelete(publicId)}
-                disabled={isDeleting === publicId}
+                onClick={() => handleDelete(publicIdWithoutExt)}
+                disabled={isDeleting === publicIdWithoutExt}
               >
-                {isDeleting === publicId ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                {isDeleting === publicIdWithoutExt ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
