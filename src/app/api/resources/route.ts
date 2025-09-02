@@ -19,15 +19,9 @@ export async function GET(request: Request) {
   try {
     const basePath = `resources/${scheme}/${branch}/${semester}`;
     
-    // Fetch dynamic subjects from Cloudinary
     const dynamicSubjects = await getFilesForSubject(basePath, subjectName);
-    
-    // Filter by subject name if the parameter is provided
-    const finalSubjects = subjectName 
-        ? dynamicSubjects.filter(s => s.name.trim().toLowerCase() === subjectName.toLowerCase()) 
-        : dynamicSubjects;
         
-    return NextResponse.json(finalSubjects);
+    return NextResponse.json(dynamicSubjects);
 
   } catch (error) {
     console.error('Failed to retrieve resources:', error);

@@ -361,13 +361,13 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           
-          // Extracts the public_id from a URL like: 
-          // https://res.cloudinary.com/<cloud_name>/raw/upload/v12345/resources/..../file.pdf
-          // The public_id is everything after the version number: resources/..../file.pdf
-          const match = file.url.match(/\/upload\/v\d+\/(.*)/);
-          const publicIdWithExt = match ? decodeURIComponent(match[1]) : '';
+          const urlParts = file.url.split('/upload/');
+          if (urlParts.length < 2) return null;
           
-          if (!publicIdWithExt) return null;
+          const publicIdWithVersion = urlParts[1];
+          const publicId = publicIdWithVersion.substring(publicIdWithVersion.indexOf('/') + 1);
+
+          if (!publicId) return null;
 
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
@@ -379,10 +379,10 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => handleDelete(publicIdWithExt)}
-                disabled={isDeleting === publicIdWithExt}
+                onClick={() => handleDelete(publicId)}
+                disabled={isDeleting === publicId}
               >
-                {isDeleting === publicIdWithExt ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                {isDeleting === publicId ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
           );
@@ -660,3 +660,4 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
+

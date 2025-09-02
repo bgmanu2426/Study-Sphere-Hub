@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { CourseSelector } from './course-selector';
 import { ResourceList } from './resource-list';
-import { Subject, ResourceFile } from '@/lib/data';
+import { Subject } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { vtuResources } from '@/lib/vtu-data';
 
@@ -30,17 +31,14 @@ export function HomePageClient() {
     return semesterData.map((s: any) => ({
       id: s.id,
       name: s.name,
-      notes: {
-        module1: { name: 'Module 1', url: s.notes?.module1 || '#', summary: '' },
-        module2: { name: 'Module 2', url: s.notes?.module2 || '#', summary: '' },
-        module3: { name: 'Module 3', url: s.notes?.module3 || '#', summary: '' },
-        module4: { name: 'Module 4', url: s.notes?.module4 || '#', summary: '' },
-        module5: { name: 'Module 5', url: s.notes?.module5 || '#', summary: '' },
-      },
+      notes: Object.keys(s.notes || {}).reduce((acc, key) => {
+        acc[key] = { name: `Module ${key.replace('module', '')}`, url: s.notes[key] || '#', summary: '' };
+        return acc;
+      }, {} as { [key: string]: any }),
       questionPapers: [
-        { name: 'Current', url: s.questionPapers?.current || '#', summary: '' },
-        { name: 'Previous', url: s.questionPapers?.previous || '#', summary: '' },
-      ],
+        ...(s.questionPapers?.current ? [{ name: 'Current', url: s.questionPapers.current, summary: '' }] : []),
+        ...(s.questionPapers?.previous ? [{ name: 'Previous', url: s.questionPapers.previous, summary: '' }] : []),
+      ]
     }));
   }
 
@@ -51,9 +49,10 @@ export function HomePageClient() {
     try {
       const { scheme, branch, semester } = filters;
       
+      const subjectsMap = new Map<string, Subject>();
+      
       // 1. Get the base structure from static data
       const staticSubjects = getStaticSubjects(scheme, branch, semester);
-      const subjectsMap = new Map<string, Subject>();
       staticSubjects.forEach(subject => {
         subjectsMap.set(subject.name.trim(), JSON.parse(JSON.stringify(subject))); // Deep copy
       });
@@ -71,37 +70,42 @@ export function HomePageClient() {
       // 3. Merge dynamic subjects into the static structure
       for (const dynamicSubject of dynamicSubjects) {
           const subjectId = dynamicSubject.name.trim();
-          const existingSubject = subjectsMap.get(subjectId);
+          let existingSubject = subjectsMap.get(subjectId);
 
-          if (existingSubject) {
-              // Merge notes
-              for (const moduleKey in dynamicSubject.notes) {
-                if (existingSubject.notes[moduleKey]) {
-                   existingSubject.notes[moduleKey] = dynamicSubject.notes[moduleKey];
-                }
-              }
-
-              // Merge question papers, replacing placeholders
-              dynamicSubject.questionPapers.forEach(dynamicQp => {
-                const existingQpIndex = existingSubject.questionPapers.findIndex(
-                  qp => qp.name.toLowerCase() === dynamicQp.name.toLowerCase()
-                );
-                
-                // Add new QP if it doesn't exist already
-                const isAlreadyPresent = existingSubject.questionPapers.some(qp => qp.url === dynamicQp.url);
-                if (!isAlreadyPresent) {
-                     // Check if it's a named QP like 'June 2023' etc.
-                     const isNamedYearQP = !['current', 'previous'].includes(dynamicQp.name.toLowerCase());
-                     if (isNamedYearQP) {
-                        existingSubject.questionPapers.push(dynamicQp)
-                     }
-                }
-              });
-
-          } else {
-              // If a dynamic subject doesn't exist in static data (e.g. elective), add it.
-              subjectsMap.set(subjectId, dynamicSubject);
+          if (!existingSubject) {
+             // If subject doesn't exist in static data, create a base structure.
+             const staticBase = staticSubjects.find(s => s.name.trim() === subjectId);
+             if (staticBase) {
+                existingSubject = JSON.parse(JSON.stringify(staticBase));
+             } else {
+                 existingSubject = {
+                    id: subjectId,
+                    name: subjectId,
+                    notes: {},
+                    questionPapers: []
+                 };
+             }
+             subjectsMap.set(subjectId, existingSubject);
           }
+          
+          // Merge notes, ensuring we don't lose the module name
+          for (const moduleKey in dynamicSubject.notes) {
+            if (existingSubject.notes[moduleKey]) {
+                existingSubject.notes[moduleKey].url = dynamicSubject.notes[moduleKey].url;
+                existingSubject.notes[moduleKey].summary = dynamicSubject.notes[moduleKey].summary;
+            } else {
+                existingSubject.notes[moduleKey] = dynamicSubject.notes[moduleKey];
+            }
+          }
+
+          // Merge question papers, avoiding duplicates
+          const existingQpUrls = new Set(existingSubject.questionPapers.map(qp => qp.url));
+          dynamicSubject.questionPapers.forEach(dynamicQp => {
+              if (!existingQpUrls.has(dynamicQp.url)) {
+                  existingSubject!.questionPapers.push(dynamicQp);
+                  existingQpUrls.add(dynamicQp.url);
+              }
+          });
       }
 
       setSubjects(Array.from(subjectsMap.values()));
