@@ -328,7 +328,8 @@ export function UploadForm({ cloudName }: UploadFormProps) {
           // The publicId for deletion can be derived from the URL by removing the Cloudinary base and version.
           const urlParts = file.url.match(/upload\/(?:v[0-9]+\/)?(.*)/);
           if (!urlParts || !urlParts[1]) return null;
-          const publicId = urlParts[1];
+          // Decode the URI component to handle spaces and other special characters correctly.
+          const publicId = decodeURIComponent(urlParts[1]);
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
