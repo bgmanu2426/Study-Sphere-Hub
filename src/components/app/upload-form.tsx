@@ -28,7 +28,6 @@ import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle } from
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
-import { useDebounce } from 'use-debounce';
 import { ResourceMetadata, saveResourceMetadata } from '@/lib/actions';
 import Link from 'next/link';
 
@@ -115,20 +114,21 @@ export function UploadForm({ cloudName }: UploadFormProps) {
       setAvailableSubjects([]);
     }
     resetField('subject');
+    setExistingSubject(null);
   }, [watchedScheme, watchedBranch, watchedSemester, resetField]);
 
 
   const fetchSubject = useCallback(async () => {
-    const { scheme, branch, semester, subject } = getValues();
+    const { scheme, branch, semester, subject: subjectId } = getValues();
 
-    if (!scheme || !branch || !semester || !subject) {
+    if (!scheme || !branch || !semester || !subjectId) {
       setExistingSubject(null);
       return;
     }
 
     setIsFetchingSubject(true);
     try {
-      const subjectName = availableSubjects.find(s => s.id === subject)?.name || '';
+      const subjectName = availableSubjects.find(s => s.id === subjectId)?.name || '';
       if (!subjectName) {
           setExistingSubject(null);
           setIsFetchingSubject(false);
@@ -201,8 +201,8 @@ export function UploadForm({ cloudName }: UploadFormProps) {
 
   const processSingleFile = (file: File, publicId: string, moduleName?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-        const { scheme, branch, semester, subject, resourceType } = getValues();
-        const subjectName = availableSubjects.find(s => s.id === subject)?.name || 'unknown-subject';
+        const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
+        const subjectName = availableSubjects.find(s => s.id === subjectId)?.name || 'unknown-subject';
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', 'vtu_assistant');
@@ -282,14 +282,14 @@ export function UploadForm({ cloudName }: UploadFormProps) {
      }
     
     const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
-    const subjectNameForPath = availableSubjects.find(s => s.id === values.subject)?.name;
+    const subjectName = availableSubjects.find(s => s.id === values.subject)?.name;
 
-    if (!subjectNameForPath) {
+    if (!subjectName) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not find the selected subject name.' });
         return;
     }
 
-    const basePath = `resources/${values.scheme}/${values.branch}/${values.semester}/${subjectNameForPath}`;
+    const basePath = `resources/${values.scheme}/${values.branch}/${values.semester}/${subjectName}`;
 
     if (values.resourceType === 'notes') {
         const moduleFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files'];
