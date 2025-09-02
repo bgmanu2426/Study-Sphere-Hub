@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -238,7 +239,8 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
                 const response = JSON.parse(xhr.responseText);
 
                 const metadata: ResourceMetadata = {
-                  scheme, branch, semester, subject: subjectName, resourceType,
+                  scheme, branch, semester, subject: subjectName, 
+                  resourceType: resourceType,
                   module: moduleName || undefined,
                   file: {
                     name: file.name,
@@ -307,14 +309,15 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
             if (files && files.length > 0) {
                 const moduleName = `module${index + 1}`;
                 files.forEach(file => {
-                   // Use original filename as public_id to allow Cloudinary to handle uniqueness if needed.
-                   allFilesToProcess.push({ file, publicId: file.name, moduleName });
+                   const publicId = file.name;
+                   allFilesToProcess.push({ file, publicId, moduleName });
                 });
             }
         });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
          values.questionPaperFile.forEach(file => {
-            allFilesToProcess.push({ file, publicId: file.name });
+            const publicId = file.name;
+            allFilesToProcess.push({ file, publicId });
          });
     }
 
@@ -359,15 +362,12 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           
-          // In Cloudinary, the public_id is the path without the version and resource_type prefix
-          // e.g. from https://res.cloudinary.com/demo/raw/upload/v1532185548/docs/datasheet.pdf
-          // public_id is docs/datasheet.pdf
-          const urlParts = file.url.split('/upload/');
-          if (urlParts.length < 2) return null;
-          
-          const publicIdWithVersion = urlParts[1];
-          // The public_id in Cloudinary doesn't include the version. We need to remove it for deletion.
-          const publicId = publicIdWithVersion.substring(publicIdWithVersion.indexOf('/') + 1);
+          const urlParts = file.url.split('/');
+          const fileNameWithExtension = urlParts.pop() || '';
+          // For raw files, the publicId is often just the filename without extension if 'use_filename_as_display_name' is on
+          // but our simplified approach uses the full filename. Best to extract from what we know.
+          // In our simplified logic, the publicId is just the filename.
+          const publicId = file.name;
 
           if (!publicId) return null;
 
