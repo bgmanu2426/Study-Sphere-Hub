@@ -29,7 +29,6 @@ import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle } from
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
-import { saveResourceMetadata } from '@/lib/actions';
 import Link from 'next/link';
 
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
@@ -305,10 +304,11 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     }
 
     const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
-
+    
+    // Generates a clean public_id without folder paths, which is required for unsigned uploads.
     const getPublicId = (filename: string) => {
         const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
-        const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_');
+        const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9_.-]/g, '_');
         return `${sanitized}_${Date.now()}`;
     }
 
@@ -665,7 +665,3 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
-
-    
-
-    
