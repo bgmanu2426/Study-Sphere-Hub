@@ -22,9 +22,9 @@ function processCloudinaryResource(resource: any): Subject | null {
 
     const fileData: ExtendedResourceFile = {
         name: context.name,
-        url: context.url,
+        url: resource.secure_url, // Use the full secure_url directly from the resource
         summary: context.summary || '',
-        publicId: context.publicid,
+        publicId: resource.public_id, // Use the top-level public_id
     };
     
     if (context.resourcetype === 'notes' && context.module) {
@@ -45,6 +45,7 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
 
     let searchQuery = `resource_type:raw AND context.scheme=${scheme} AND context.branch=${branch} AND context.semester=${semester}`;
     if (subjectName) {
+        // Use context.subject for exact matching of the subject name
         searchQuery += ` AND context.subject="${subjectName.trim()}"`;
     }
 
@@ -88,7 +89,7 @@ export async function deleteFileByPath(publicId: string): Promise<void> {
         await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
     } catch(error) {
          console.error('Failed to delete file:', error);
-         throw error;
+         throw new Error('Failed to delete file from Cloudinary.');
     }
 }
 
