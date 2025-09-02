@@ -49,8 +49,8 @@ function ResourceItem({ resource }: { resource: ResourceFile }) {
 }
 
 export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialogProps) {
-  const hasNotes = subject.notes && Object.values(subject.notes).some(r => r && r.url);
-  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.some(r => r && r.url);
+  const hasNotes = subject.notes && Object.values(subject.notes).some(r => r && r.url && r.url !== '#');
+  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.some(r => r && r.url && r.url !== '#');
 
   const getValidNotesModules = () => {
     if (!subject.notes) return [];
@@ -103,4 +103,3 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
     </Dialog>
   );
 }
-
