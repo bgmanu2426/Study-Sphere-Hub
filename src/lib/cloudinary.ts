@@ -8,11 +8,11 @@ type ExtendedResourceFile = ResourceFile & { publicId: string };
 function processCloudinaryResource(resource: any): Subject | null {
     if (!resource.context) return null;
 
-    const context = resource.context;
+    const context = resource.context.custom || resource.context;
     const subjectName = context.subject;
-
+    
     if (!subjectName) return null;
-
+    
     const subject: Subject = {
         id: subjectName,
         name: subjectName,

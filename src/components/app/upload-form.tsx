@@ -240,6 +240,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('context', contextString);
 
         const xhr = new XMLHttpRequest();
+        // **CRITICAL FIX**: Use the /raw/upload endpoint for all files.
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
         xhr.open('POST', url, true);
 
@@ -305,9 +306,9 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
 
     const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
     
-    // Generates a clean public_id without folder paths, which is required for unsigned uploads.
+    // **CRITICAL FIX**: Generates a clean public_id without folder paths.
     const getPublicId = (filename: string) => {
-        const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+        const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
         const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9_.-]/g, '_');
         return `${sanitized}_${Date.now()}`;
     }
@@ -665,5 +666,3 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
-
-    

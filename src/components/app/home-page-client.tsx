@@ -73,7 +73,6 @@ export function HomePageClient() {
           let existingSubject = subjectsMap.get(subjectId);
 
           if (!existingSubject) {
-             // If subject doesn't exist in static data, create a base structure.
              const staticBase = staticSubjects.find(s => s.name.trim() === subjectId);
              if (staticBase) {
                 existingSubject = JSON.parse(JSON.stringify(staticBase));
@@ -93,6 +92,8 @@ export function HomePageClient() {
             if (existingSubject.notes[moduleKey]) {
                 existingSubject.notes[moduleKey].url = dynamicSubject.notes[moduleKey].url;
                 existingSubject.notes[moduleKey].summary = dynamicSubject.notes[moduleKey].summary;
+                (existingSubject.notes[moduleKey] as any).publicId = (dynamicSubject.notes[moduleKey] as any).publicId;
+
             } else {
                 existingSubject.notes[moduleKey] = dynamicSubject.notes[moduleKey];
             }
