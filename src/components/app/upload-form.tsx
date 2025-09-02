@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } fimport { useForm } from 'react-hook-form';rom 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -325,9 +325,10 @@ export function UploadForm({ cloudName }: UploadFormProps) {
         {fileList.map((file) => {
           if (!file || !file.url) return null;
           
-          const urlParts = file.url.match(/upload\/(v[0-9]+\/)?(.*)/);
-          if (!urlParts || !urlParts[2]) return null;
-          const publicId = urlParts[2];
+          // The publicId for deletion can be derived from the URL by removing the Cloudinary base and version.
+          const urlParts = file.url.match(/upload\/(?:v[0-9]+\/)?(.*)/);
+          if (!urlParts || !urlParts[1]) return null;
+          const publicId = urlParts[1];
           
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
