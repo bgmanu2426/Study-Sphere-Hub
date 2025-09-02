@@ -94,4 +94,4 @@ Once the setup is complete, you can run the application:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) (or the port shown in your terminal, as it may differ from the default 9002).
+Open [http://localhost:3000](http://localhost:3000) (or the port shown in your terminal, as the default may be different).
