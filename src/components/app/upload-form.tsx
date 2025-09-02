@@ -224,8 +224,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('file', file);
         formData.append('upload_preset', uploadPreset);
         formData.append('public_id', publicId);
-        
-        // This is critical for ensuring non-image files are accessible.
         formData.append('resource_type', 'raw'); 
 
         const xhr = new XMLHttpRequest();
@@ -320,14 +318,14 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
             if (files && files.length > 0) {
                 const moduleName = `module${index + 1}`;
                 files.forEach(file => {
-                   const publicId = getPublicId(file.name);
+                   const publicId = file.name
                    allFilesToProcess.push({ file, publicId, moduleName });
                 });
             }
         });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
          values.questionPaperFile.forEach(file => {
-            const publicId = getPublicId(file.name);
+            const publicId = file.name
             allFilesToProcess.push({ file, publicId });
          });
     }
