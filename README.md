@@ -65,6 +65,7 @@ This project requires environment variables to connect to Firebase and Cloudinar
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-cloud-name"
     NEXT_PUBLIC_CLOUDINARY_API_KEY="your-api-key"
     SERVER_CLOUDINARY_API_SECRET="your-api-secret"
+    NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET="vtu_assistant"
     ```
 
 ### Service Setup
@@ -77,7 +78,8 @@ This project requires environment variables to connect to Firebase and Cloudinar
 2.  **Cloudinary**:
     -   Go to the [Cloudinary website](https://cloudinary.com/), sign up for an account, and find your **Cloud Name**, **API Key**, and **API Secret** in the dashboard. Add these to your `.env` file.
     -   In your Cloudinary settings, navigate to **Upload** and add a new **Upload Preset**.
-    -   Name the preset `vtu_assistant` and set the **Signing Mode** to `Unsigned`. This is crucial for allowing direct uploads from the browser.
+    -   Name the preset (e.g., `vtu_assistant`). This name must match the `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` value in your `.env` file.
+    -   Set the **Signing Mode** to `Unsigned`. This is crucial for allowing direct uploads from the browser.
 
 ### Running the Development Server
 

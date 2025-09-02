@@ -75,10 +75,11 @@ type UploadableFile = {
 type UploadFormProps = {
   cloudName: string;
   apiKey: string;
+  uploadPreset: string;
 };
 
 
-export function UploadForm({ cloudName, apiKey }: UploadFormProps) {
+export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadableFiles, setUploadableFiles] = useState<UploadableFile[]>([]);
   const { toast } = useToast();
@@ -220,7 +221,7 @@ export function UploadForm({ cloudName, apiKey }: UploadFormProps) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('api_key', apiKey);
-        formData.append('upload_preset', 'vtu_assistant');
+        formData.append('upload_preset', uploadPreset);
         formData.append('public_id', publicIdWithoutExt);
         formData.append('resource_type', 'raw');
 
