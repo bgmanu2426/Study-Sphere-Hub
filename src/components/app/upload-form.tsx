@@ -224,7 +224,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('file', file);
         formData.append('upload_preset', uploadPreset);
         formData.append('public_id', publicId);
-        formData.append('resource_type', 'raw'); 
 
         const xhr = new XMLHttpRequest();
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
@@ -307,7 +306,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
 
     // Sanitize filename to create a safe public_id for Cloudinary.
-    // THIS IS THE CRITICAL FIX: No folder paths, just the sanitized filename.
     const getPublicId = (filename: string) => {
         const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
         const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_');
