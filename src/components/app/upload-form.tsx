@@ -224,6 +224,21 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('file', file);
         formData.append('upload_preset', uploadPreset);
         formData.append('public_id', publicId);
+        
+        const context = {
+            scheme: scheme,
+            branch: branch,
+            semester: semester,
+            subject: subjectName,
+            resourcetype: resourceType,
+            module: moduleName || '',
+            name: file.name,
+            publicid: publicId
+        };
+        const contextString = Object.entries(context)
+                                    .map(([key, value]) => `${key}=${value}`)
+                                    .join('|');
+        formData.append('context', contextString);
 
         const xhr = new XMLHttpRequest();
         const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
@@ -240,20 +255,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         xhr.onload = async () => {
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
-
-                const metadata: ResourceMetadata = {
-                  scheme, branch, semester, subject: subjectName, 
-                  resourceType: resourceType,
-                  module: moduleName || undefined,
-                  file: {
-                    name: file.name,
-                    url: response.secure_url,
-                    publicId: response.public_id,
-                  }
-                };
-                
-                await saveResourceMetadata(metadata);
-                
                 setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100 } : f));
                 toast({
                     title: 'Upload Successful',
@@ -664,3 +665,5 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
+
+    

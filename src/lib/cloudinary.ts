@@ -21,18 +21,18 @@ function processCloudinaryResource(resource: any): Subject | null {
     };
 
     const fileData: ExtendedResourceFile = {
-        name: context.name,
-        url: resource.secure_url, // Use the full secure_url directly from the resource
+        name: context.name || resource.public_id,
+        url: resource.secure_url,
         summary: context.summary || '',
-        publicId: resource.public_id, // Use the top-level public_id
+        publicId: resource.public_id,
     };
     
     if (context.resourcetype === 'notes' && context.module) {
         subject.notes[context.module] = fileData;
-    } else if (context.resourcetype === 'questionpaper') {
+    } else if (context.resourcetype === 'questionPaper') { // Note: 'questionPaper', not 'questionpaper'
         subject.questionPapers.push(fileData);
     } else {
-        return null;
+        return null; // Ignore if it's not a valid resource type for our app
     }
     
     return subject;
@@ -45,7 +45,6 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
 
     let searchQuery = `resource_type:raw AND context.scheme=${scheme} AND context.branch=${branch} AND context.semester=${semester}`;
     if (subjectName) {
-        // Use context.subject for exact matching of the subject name
         searchQuery += ` AND context.subject="${subjectName.trim()}"`;
     }
 
@@ -66,7 +65,10 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
             const existing = subjectsMap.get(subjectId);
 
             if (existing) {
+                // Merge notes
                 Object.assign(existing.notes, parsedSubject.notes);
+
+                // Merge question papers, avoiding duplicates
                 const existingQpUrls = new Set(existing.questionPapers.map(qp => qp.url));
                 parsedSubject.questionPapers.forEach(qp => {
                     if (!existingQpUrls.has(qp.url)) {
@@ -101,3 +103,5 @@ export async function updateFileContext(publicId: string, context: Record<string
 export async function updateFileSummary(publicId: string, summary: string): Promise<void> {
     await updateFileContext(publicId, { summary });
 }
+
+    

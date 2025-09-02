@@ -56,31 +56,9 @@ export type ResourceMetadata = {
 };
 
 export async function saveResourceMetadata(metadata: ResourceMetadata) {
-  try {
-    const context = {
-      scheme: metadata.scheme,
-      branch: metadata.branch,
-      semester: metadata.semester,
-      subject: metadata.subject,
-      resourcetype: metadata.resourceType,
-      module: metadata.module || '',
-      name: metadata.file.name,
-      url: metadata.file.url,
-      publicid: metadata.file.publicId
-    };
-
-    // Cloudinary context keys must be lowercase and can only contain letters, numbers, and underscores.
-    const sanitizedContext = Object.fromEntries(
-      Object.entries(context).map(([key, value]) => [key.toLowerCase(), String(value).replace(/[^a-zA-Z0-9\s-._:]/g, '')])
-    );
-    
-    await updateFileContext(metadata.file.publicId, sanitizedContext);
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to save resource metadata:', error);
-    return { success: false, error: 'Failed to save metadata.' };
-  }
+  // This function is no longer needed as context is saved directly during upload.
+  // It's kept for compatibility in case it's used elsewhere, but can be removed.
+  return { success: true };
 }
 
 
@@ -88,3 +66,5 @@ export async function summarizeAndStore(publicId: string): Promise<{ success: bo
   // This feature is temporarily disabled.
   return { success: true };
 }
+
+    
