@@ -224,7 +224,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         formData.append('resource_type', 'raw'); 
 
         const xhr = new XMLHttpRequest();
-        const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
+        const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
         xhr.open('POST', url, true);
 
 
