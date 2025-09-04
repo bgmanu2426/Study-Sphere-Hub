@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { schemes, branches, years, semesters as allSemesters, cycles, Subject, ResourceFile } from '@/lib/data';
 import { vtuResources } from '@/lib/vtu-data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle } from 'lucide-react';
+import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle, ExternalLink } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
@@ -69,6 +69,8 @@ type UploadableFile = {
   progress: number;
   status: 'pending' | 'uploading' | 'complete' | 'error' | 'canceled';
   module?: string;
+  url?: string;
+  errorMessage?: string;
 }
 
 type UploadFormProps = {
@@ -214,7 +216,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
             const errorMsg = "Could not determine subject name for upload.";
             console.error(errorMsg);
             toast({ variant: 'destructive', title: 'Upload Error', description: errorMsg });
-            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error' } : f));
+            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage: errorMsg } : f));
             reject(new Error(errorMsg));
             return;
         }
@@ -254,7 +256,7 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
         xhr.onload = async () => {
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
-                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100 } : f));
+                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100, url: response.secure_url } : f));
                 toast({
                     title: 'Upload Successful',
                     description: `Successfully uploaded "${file.name}".`,
@@ -262,26 +264,28 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
                 resolve(response.public_id);
             } else {
                 const error = JSON.parse(xhr.responseText);
-                console.error(`Upload failed for ${file.name}:`, error.error.message);
-                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error' } : f));
+                const errorMessage = error.error.message;
+                console.error(`Upload failed for ${file.name}:`, errorMessage);
+                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
                 toast({
                     variant: 'destructive',
                     title: `Upload failed for ${file.name}`,
-                    description: error.error.message
+                    description: errorMessage
                 });
-                reject(new Error(error.error.message));
+                reject(new Error(errorMessage));
             }
         };
 
         xhr.onerror = () => {
-            console.error('Network error during upload');
-             setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error' } : f));
+             const errorMessage = 'Network error occurred during upload.';
+             console.error(errorMessage);
+             setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
              toast({
                 variant: 'destructive',
                 title: `Upload failed for ${file.name}`,
-                description: 'Network error occurred.'
+                description: errorMessage
              });
-            reject(new Error('Network error'));
+            reject(new Error(errorMessage));
         };
 
         xhr.send(formData);
@@ -358,7 +362,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     } finally {
         ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
         setIsSubmitting(false);
-        setTimeout(() => setUploadableFiles([]), 5000);
     }
   }
 
@@ -636,17 +639,25 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
                <h3 className="text-lg font-medium">Upload Progress</h3>
                <div className='space-y-2'>
                 {uploadableFiles.map(f => (
-                  <div key={f.path} className="w-full">
-                      <div className="flex items-center gap-2 text-sm">
-                        {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
-                        {f.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
-                        {f.status === 'canceled' && <XCircle className="w-4 h-4 text-gray-500"/>}
-                        {f.status === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
-                        {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
-                        <span className="truncate flex-1">{f.file.name}</span>
-                        <span className="text-muted-foreground text-xs">{f.status}</span>
-                      </div>
-                      {(f.status === 'uploading') && <Progress value={f.progress} className="h-2 mt-1" />}
+                  <div key={f.path}>
+                    <div className="w-full">
+                        <div className="flex items-center gap-2 text-sm">
+                          {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
+                          {f.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
+                          {f.status === 'canceled' && <XCircle className="w-4 h-4 text-gray-500"/>}
+                          {f.status === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
+                          {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
+                          <span className="truncate flex-1">{f.file.name}</span>
+                          {f.status === 'complete' && f.url && (
+                             <Link href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                <ExternalLink className="w-4 h-4" />
+                            </Link>
+                          )}
+                          <span className="text-muted-foreground text-xs capitalize">{f.status}</span>
+                        </div>
+                        {(f.status === 'uploading') && <Progress value={f.progress} className="h-2 mt-1" />}
+                        {f.status === 'error' && <p className="text-xs text-destructive mt-1">{f.errorMessage}</p>}
+                    </div>
                   </div>
                 ))}
                </div>
@@ -667,5 +678,6 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     </Form>
   );
 }
+
 
     
