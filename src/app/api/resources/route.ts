@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { getFilesForSubject } from '@/lib/cloudinary';
 import { Subject } from '@/lib/data';
 
+// Load environment variables on the server
+require('dotenv').config();
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scheme = searchParams.get('scheme');
