@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteFileByPath } from '@/lib/cloudinary';
 import Link from 'next/link';
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
 const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
 
 
@@ -75,12 +77,11 @@ type UploadableFile = {
 
 type UploadFormProps = {
   cloudName: string;
-  apiKey: string;
   uploadPreset: string;
 };
 
 
-export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps) {
+export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadableFiles, setUploadableFiles] = useState<UploadableFile[]>([]);
   const { toast } = useToast();
@@ -142,7 +143,9 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
       const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}&subject=${encodeURIComponent(subjectName)}`);
       if (response.ok) {
         const data = await response.json();
-        setExistingSubject(data.length > 0 ? data[0] : null);
+        // Assuming the API returns a single subject object or an empty array
+        const subjectData = Array.isArray(data) ? data[0] : data;
+        setExistingSubject(subjectData || null);
       } else {
         setExistingSubject(null);
       }
@@ -232,7 +235,6 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         resourcetype: resourceType,
         module: moduleName || '',
         name: file.name,
-        publicid: publicId
     };
     const contextString = Object.entries(context)
                                 .map(([key, value]) => `${key}=${value}`)
@@ -307,28 +309,32 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         }
         return `${subjectId}_${resourceType}_${sanitizedFilename}_${uniquePart}`;
     }
+    
+    const fileFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'];
 
-    if (values.resourceType === 'notes') {
-        const moduleFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files'];
-        moduleFields.forEach((field, index) => {
-            const files = values[field] as File[] | undefined;
-            if (files && files.length > 0) {
-                const moduleName = `module${index + 1}`;
-                files.forEach(file => {
-                   const publicId = getPublicId(file.name, values.subject, values.resourceType, moduleName);
-                   allFilesToProcess.push({ file, publicId, moduleName });
-                });
+    for (const field of fileFields) {
+        const files = values[field] as File[] | undefined;
+        if (files) {
+            for (const file of files) {
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'File Too Large',
+                        description: `"${file.name}" is larger than the 10MB limit and will not be uploaded.`,
+                    });
+                    continue; // Skip this file
+                }
+                const moduleName = field.startsWith('module') ? field.replace('Files', '') : undefined;
+                const resourceTypeForFile = field === 'questionPaperFile' ? 'questionPaper' : 'notes';
+                const publicId = getPublicId(file.name, values.subject, resourceTypeForFile, moduleName);
+                allFilesToProcess.push({ file, publicId, moduleName });
             }
-        });
-    } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
-         values.questionPaperFile.forEach(file => {
-            const publicId = getPublicId(file.name, values.subject, values.resourceType);
-            allFilesToProcess.push({ file, publicId });
-         });
+        }
     }
 
+
     if (allFilesToProcess.length === 0) {
-        toast({ title: 'No files selected', description: 'No new files were selected for upload.' });
+        toast({ title: 'No files selected', description: 'No valid files were selected for upload.' });
         return;
     }
     
@@ -374,9 +380,12 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
 
           return (
             <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-              <Link href={file.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
-                {file.name}
-              </Link>
+                <div className='flex items-center gap-2 truncate'>
+                    <FileIcon className="h-4 w-4 text-muted-foreground" />
+                    <Link href={file.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
+                        {file.name}
+                    </Link>
+                </div>
               <Button
                 type="button"
                 variant="ghost"
@@ -531,7 +540,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Resource Type</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || !watchedSubject}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select resource type" />
@@ -548,13 +557,13 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
               />
         </div>
        
-        {resourceType === 'notes' && (
+        {resourceType === 'notes' && watchedSubject && (
           <div className="space-y-4 rounded-lg border p-4">
              <div className="flex items-center">
               <h3 className="text-lg font-medium">Module Notes</h3>
               {isFetchingSubject && <Loader2 className="ml-2 h-5 w-5 animate-spin" />}
             </div>
-            <FormDescription>Upload one PDF file for each module. Uploading a new file will replace the existing one.</FormDescription>
+            <FormDescription>Upload one PDF file (max 10MB) for each module. Uploading a new file will replace the existing one.</FormDescription>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[1, 2, 3, 4, 5].map((moduleNumber) => {
                  const moduleName = `module${moduleNumber}`;
@@ -593,7 +602,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
           </div>
         )}
 
-        {resourceType === 'questionPaper' && (
+        {resourceType === 'questionPaper' && watchedSubject && (
           <div className="space-y-4 rounded-lg border p-4">
              <div className="flex items-center">
                 <h3 className="text-lg font-medium">Question Papers</h3>
@@ -615,7 +624,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
                       {...rest}
                     />
                   </FormControl>
-                  <FormDescription>Please upload one or more PDF files.</FormDescription>
+                  <FormDescription>Please upload one or more PDF files (max 10MB each).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -658,7 +667,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         )}
        
         <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isSubmitting || isFetchingSubject} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} className="hover:bg-accent/90">
+            <Button type="submit" disabled={isSubmitting || isFetchingSubject || !watchedSubject} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} className="hover:bg-accent/90">
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -673,3 +682,6 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
 }
 
 
+
+
+    
