@@ -299,10 +299,13 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
 
     const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
     
-    const getPublicId = (filename: string) => {
-        const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
-        const sanitized = nameWithoutExt.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        return `${sanitized}_${Date.now()}`;
+    const getPublicId = (originalFilename: string, subjectId: string, resourceType: string, moduleName?: string) => {
+        const sanitizedFilename = originalFilename.substring(0, originalFilename.lastIndexOf('.')).replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const uniquePart = Date.now();
+        if (resourceType === 'notes' && moduleName) {
+            return `${subjectId}_${moduleName}_${sanitizedFilename}_${uniquePart}`;
+        }
+        return `${subjectId}_${resourceType}_${sanitizedFilename}_${uniquePart}`;
     }
 
     if (values.resourceType === 'notes') {
@@ -312,14 +315,14 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
             if (files && files.length > 0) {
                 const moduleName = `module${index + 1}`;
                 files.forEach(file => {
-                   const publicId = getPublicId(file.name)
+                   const publicId = getPublicId(file.name, values.subject, values.resourceType, moduleName);
                    allFilesToProcess.push({ file, publicId, moduleName });
                 });
             }
         });
     } else if (values.resourceType === 'questionPaper' && values.questionPaperFile) {
          values.questionPaperFile.forEach(file => {
-            const publicId = getPublicId(file.name)
+            const publicId = getPublicId(file.name, values.subject, values.resourceType);
             allFilesToProcess.push({ file, publicId });
          });
     }
@@ -668,4 +671,5 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     </Form>
   );
 }
+
 
