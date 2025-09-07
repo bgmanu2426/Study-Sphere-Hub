@@ -303,7 +303,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     
     // Generates a URL-safe, random, and clean public_id
     const getPublicId = () => {
-        return window.crypto.getRandomValues(new Uint8Array(12)).reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), '');
+        return window.crypto.getRandomValues(new Uint8Array(16)).reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), '');
     }
     
     const fileFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'];
