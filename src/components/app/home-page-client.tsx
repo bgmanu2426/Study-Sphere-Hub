@@ -87,15 +87,17 @@ export function HomePageClient() {
              subjectsMap.set(subjectId, existingSubject);
           }
           
-          // Merge notes, ensuring we don't lose the module name
+          // Merge notes, ensuring we don't lose the module name but update dynamic content
           for (const moduleKey in dynamicSubject.notes) {
+            const dynamicNote = dynamicSubject.notes[moduleKey];
             if (existingSubject.notes[moduleKey]) {
-                existingSubject.notes[moduleKey].url = dynamicSubject.notes[moduleKey].url;
-                existingSubject.notes[moduleKey].summary = dynamicSubject.notes[moduleKey].summary;
-                (existingSubject.notes[moduleKey] as any).publicId = (dynamicSubject.notes[moduleKey] as any).publicId;
-
+                // Update existing static note with dynamic data
+                existingSubject.notes[moduleKey].url = dynamicNote.url;
+                existingSubject.notes[moduleKey].summary = dynamicNote.summary;
+                (existingSubject.notes[moduleKey] as any).publicId = (dynamicNote as any).publicId;
             } else {
-                existingSubject.notes[moduleKey] = dynamicSubject.notes[moduleKey];
+                // Add new note if it doesn't exist in static data
+                existingSubject.notes[moduleKey] = dynamicNote;
             }
           }
 
@@ -105,6 +107,13 @@ export function HomePageClient() {
               if (!existingQpUrls.has(dynamicQp.url)) {
                   existingSubject!.questionPapers.push(dynamicQp);
                   existingQpUrls.add(dynamicQp.url);
+              } else {
+                 // If URL exists, update it with dynamic data like publicId
+                 const qpToUpdate = existingSubject!.questionPapers.find(qp => qp.url === dynamicQp.url);
+                 if (qpToUpdate) {
+                    (qpToUpdate as any).publicId = (dynamicQp as any).publicId;
+                    qpToUpdate.summary = dynamicQp.summary;
+                 }
               }
           });
       }

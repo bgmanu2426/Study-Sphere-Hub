@@ -24,7 +24,7 @@ function processCloudinaryResource(resource: any): Subject | null {
         name: context.name || resource.public_id,
         url: resource.secure_url,
         summary: context.summary || '',
-        publicId: resource.public_id, // ✅ FIX: Use the correct top-level public_id
+        publicId: resource.public_id,
     };
     
     if (context.resourcetype === 'notes' && context.module) {
@@ -45,7 +45,7 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
 
     let searchQuery = `resource_type:raw AND context.scheme=${scheme} AND context.branch=${branch} AND context.semester=${semester}`;
     if (subjectName) {
-        searchQuery += ` AND context.subject="${subjectName.trim()}"`;
+        searchQuery += ` AND context.subject:"${subjectName.trim()}"`;
     }
 
     try {
