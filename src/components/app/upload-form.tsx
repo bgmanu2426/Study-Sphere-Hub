@@ -207,90 +207,79 @@ export function UploadForm({ cloudName, apiKey, uploadPreset }: UploadFormProps)
     }
   };
 
-  const processSingleFile = (file: File, publicId: string, moduleName?: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
-        const subjectName = availableSubjects.find(s => s.id === subjectId)?.name;
+const processSingleFile = async (file: File, publicId: string, moduleName?: string): Promise<string> => {
+    const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
+    const subjectName = availableSubjects.find(s => s.id === subjectId)?.name;
 
-        if (!subjectName) {
-            const errorMsg = "Could not determine subject name for upload.";
-            console.error(errorMsg);
-            toast({ variant: 'destructive', title: 'Upload Error', description: errorMsg });
-            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage: errorMsg } : f));
-            reject(new Error(errorMsg));
-            return;
-        }
+    if (!subjectName) {
+        const errorMsg = "Could not determine subject name for upload.";
+        console.error(errorMsg);
+        toast({ variant: 'destructive', title: 'Upload Error', description: errorMsg });
+        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage: errorMsg } : f));
+        throw new Error(errorMsg);
+    }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset);
-        formData.append('public_id', publicId);
-        
-        const context = {
-            scheme: scheme,
-            branch: branch,
-            semester: semester,
-            subject: subjectName,
-            resourcetype: resourceType,
-            module: moduleName || '',
-            name: file.name,
-            publicid: publicId
-        };
-        const contextString = Object.entries(context)
-                                    .map(([key, value]) => `${key}=${value}`)
-                                    .join('|');
-        formData.append('context', contextString);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', uploadPreset);
+    formData.append('public_id', publicId);
+    
+    const context = {
+        scheme: scheme,
+        branch: branch,
+        semester: semester,
+        subject: subjectName,
+        resourcetype: resourceType,
+        module: moduleName || '',
+        name: file.name,
+        publicid: publicId
+    };
+    const contextString = Object.entries(context)
+                                .map(([key, value]) => `${key}=${value}`)
+                                .join('|');
+    formData.append('context', contextString);
 
-        const xhr = new XMLHttpRequest();
-        const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
-        xhr.open('POST', url, true);
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
 
-        xhr.withCredentials = false;
+    try {
+        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'uploading', progress: 50 } : f));
 
-        xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-                const progress = (event.loaded / event.total) * 100;
-                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'uploading', progress } : f));
-            }
-        };
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
 
-        xhr.onload = async () => {
-            if (xhr.status === 200) {
-                const response = JSON.parse(xhr.responseText);
-                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100, url: response.secure_url } : f));
-                toast({
-                    title: 'Upload Successful',
-                    description: `Successfully uploaded "${file.name}".`,
-                });
-                resolve(response.public_id);
-            } else {
-                const error = JSON.parse(xhr.responseText);
-                const errorMessage = error.error.message;
-                console.error(`Upload failed for ${file.name}:`, errorMessage);
-                setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
-                toast({
-                    variant: 'destructive',
-                    title: `Upload failed for ${file.name}`,
-                    description: errorMessage
-                });
-                reject(new Error(errorMessage));
-            }
-        };
+        const responseData = await response.json();
 
-        xhr.onerror = () => {
-             const errorMessage = 'Network error occurred during upload.';
-             console.error(errorMessage);
-             setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
-             toast({
+        if (response.ok) {
+            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100, url: responseData.secure_url } : f));
+            toast({
+                title: 'Upload Successful',
+                description: `Successfully uploaded "${file.name}".`,
+            });
+            return responseData.public_id;
+        } else {
+            const errorMessage = responseData.error.message;
+            console.error(`Upload failed for ${file.name}:`, errorMessage);
+            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
+            toast({
                 variant: 'destructive',
                 title: `Upload failed for ${file.name}`,
                 description: errorMessage
-             });
-            reject(new Error(errorMessage));
-        };
-
-        xhr.send(formData);
-    });
+            });
+            throw new Error(errorMessage);
+        }
+    } catch (error: any) {
+        const errorMessage = error.message || 'A network error occurred during upload.';
+        console.error(errorMessage);
+        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
+        toast({
+           variant: 'destructive',
+           title: `Upload failed for ${file.name}`,
+           description: errorMessage
+        });
+        throw new Error(errorMessage);
+    }
 };
 
 
