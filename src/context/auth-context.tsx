@@ -49,6 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !user && pathname !== '/login') {
+      router.replace('/login');
+    }
+  }, [user, loading, pathname, router]);
+
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/drive.file');
@@ -65,21 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  if (loading) {
+  if (loading || (!user && pathname !== '/login')) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!user && pathname !== '/login') {
-     router.replace('/login');
-     return (
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      );
   }
 
   return (
