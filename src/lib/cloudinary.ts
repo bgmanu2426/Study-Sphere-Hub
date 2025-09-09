@@ -42,15 +42,17 @@ function processCloudinaryResource(resource: any): Subject | null {
 export async function getFilesForSubject(basePath: string, subjectName?: string): Promise<Subject[]> {
     const contextQueryParts = basePath.split('/').slice(1);
     const [scheme, branch, semester] = contextQueryParts;
-
-    let searchQuery = `resource_type:raw AND context.scheme=${scheme} AND context.branch=${branch} AND context.semester=${semester}`;
+    
+    // We search by folder now, which is more reliable.
+    let folderPath = `resources/${scheme}/${branch}/${semester}`;
     if (subjectName) {
-        searchQuery += ` AND context.subject:"${subjectName.trim()}"`;
+        folderPath += `/${subjectName.trim()}`;
     }
 
     try {
+        // Use folder search instead of context for the main query
         const results = await cloudinary.search
-            .expression(searchQuery)
+            .expression(`folder:"${folderPath}"`)
             .with_field('context')
             .max_results(500)
             .execute();
@@ -61,7 +63,9 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
             const parsedSubject = processCloudinaryResource(resource);
             if (!parsedSubject) continue;
 
-            const subjectId = parsedSubject.name.trim();
+            // The subject name from context is the ground truth
+            const context = resource.context.custom || resource.context;
+            const subjectId = context.subject.trim();
             const existing = subjectsMap.get(subjectId);
 
             if (existing) {
@@ -76,6 +80,7 @@ export async function getFilesForSubject(basePath: string, subjectName?: string)
                     }
                 });
             } else {
+                // Since parsedSubject has the correct name, we can use it
                 subjectsMap.set(subjectId, parsedSubject);
             }
         }
@@ -108,9 +113,3 @@ export async function updateFileContext(publicId: string, context: Record<string
 export async function updateFileSummary(publicId: string, summary: string): Promise<void> {
     await updateFileContext(publicId, { summary });
 }
-
-    
-
-    
-
-    

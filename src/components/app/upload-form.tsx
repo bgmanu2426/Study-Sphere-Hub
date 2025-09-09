@@ -51,12 +51,19 @@ const formSchema = z.object({
   module5Files: fileSchema,
 }).refine(data => {
     if (data.resourceType === 'notes') {
-        return true;
+        const notesFiles = [
+            data.module1Files,
+            data.module2Files,
+            data.module3Files,
+            data.module4Files,
+            data.module5Files,
+        ].some(files => files && files.length > 0);
+        return notesFiles;
     }
     if (data.resourceType === 'questionPaper') {
-        return true;
+        return data.questionPaperFile && data.questionPaperFile.length > 0;
     }
-    return true;
+    return false;
 }, {
   message: 'Please select at least one file to upload for the chosen resource type.',
   path: ['resourceType'], 
@@ -67,11 +74,12 @@ type FormValues = z.infer<typeof formSchema>;
 
 type UploadableFile = {
   file: File;
-  path: string; // This will be the Cloudinary public_id
+  id: string; // Unique ID for tracking within the component state
   progress: number;
   status: 'pending' | 'uploading' | 'complete' | 'error' | 'canceled';
   module?: string;
   url?: string;
+  publicId?: string;
   errorMessage?: string;
 }
 
@@ -210,30 +218,34 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
     }
   };
 
-const processSingleFile = async (file: File, publicId: string, moduleName?: string): Promise<string> => {
+const processSingleFile = async (uploadableFile: UploadableFile): Promise<string> => {
+    const { file, id, module } = uploadableFile;
     const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
     const subjectName = availableSubjects.find(s => s.id === subjectId)?.name;
 
     if (!subjectName) {
         const errorMsg = "Could not determine subject name for upload.";
         console.error(errorMsg);
-        toast({ variant: 'destructive', title: 'Upload Error', description: errorMsg });
-        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage: errorMsg } : f));
+        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage: errorMsg } : f));
         throw new Error(errorMsg);
     }
 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', uploadPreset);
-    formData.append('public_id', publicId);
+    formData.append('use_filename', 'true');
+    formData.append('unique_filename', 'true'); // Use true to prevent overwrites, false to allow them
     
+    const folderPath = `resources/${scheme}/${branch}/${semester}/${subjectName}/${resourceType === 'notes' ? 'notes' : 'questionPapers'}`;
+    formData.append('folder', folderPath);
+
     const context = {
         scheme: scheme,
         branch: branch,
         semester: semester,
         subject: subjectName,
         resourcetype: resourceType,
-        module: moduleName || '',
+        module: module || '',
         name: file.name,
     };
     const contextString = Object.entries(context)
@@ -244,7 +256,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
 
     try {
-        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'uploading', progress: 50 } : f));
+        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'uploading', progress: 50 } : f));
 
         const response = await fetch(url, {
             method: 'POST',
@@ -254,7 +266,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         const responseData = await response.json();
 
         if (response.ok) {
-            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'complete', progress: 100, url: responseData.secure_url } : f));
+            setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'complete', progress: 100, url: responseData.secure_url, publicId: responseData.public_id } : f));
             toast({
                 title: 'Upload Successful',
                 description: `Successfully uploaded "${file.name}".`,
@@ -263,7 +275,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         } else {
             const errorMessage = responseData.error.message;
             console.error(`Upload failed for ${file.name}:`, errorMessage);
-            setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
+            setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage } : f));
             toast({
                 variant: 'destructive',
                 title: `Upload failed for ${file.name}`,
@@ -274,7 +286,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     } catch (error: any) {
         const errorMessage = error.message || 'A network error occurred during upload.';
         console.error(errorMessage);
-        setUploadableFiles(prev => prev.map(f => f.path === publicId ? { ...f, status: 'error', errorMessage } : f));
+        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage } : f));
         toast({
            variant: 'destructive',
            title: `Upload failed for ${file.name}`,
@@ -292,19 +304,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
         return;
      }
     
-    const subjectData = availableSubjects.find(s => s.id === values.subject);
-
-    if (!subjectData) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find the selected subject name.' });
-        return;
-    }
-
-    const allFilesToProcess: { file: File, publicId: string, moduleName?: string }[] = [];
-    
-    // Generates a URL-safe, random, and clean public_id
-    const getPublicId = () => {
-        return window.crypto.getRandomValues(new Uint8Array(16)).reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), '');
-    }
+    const allFilesToProcess: UploadableFile[] = [];
     
     const fileFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'];
 
@@ -321,8 +321,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
                     continue; // Skip this file
                 }
                 const moduleName = field.startsWith('module') ? field.replace('Files', '') : undefined;
-                const publicId = getPublicId();
-                allFilesToProcess.push({ file, publicId, moduleName });
+                allFilesToProcess.push({ file, id: crypto.randomUUID(), progress: 0, status: 'pending', module: moduleName });
             }
         }
     }
@@ -334,12 +333,10 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     }
     
     setIsSubmitting(true);
-    
-    const initialFiles: UploadableFile[] = allFilesToProcess.map(f => ({ file: f.file, path: f.publicId, progress: 0, status: 'pending', module: f.moduleName }));
-    setUploadableFiles(initialFiles);
+    setUploadableFiles(allFilesToProcess);
     
     try {
-        const uploadPromises = allFilesToProcess.map(f => processSingleFile(f.file, f.publicId, f.moduleName));
+        const uploadPromises = allFilesToProcess.map(f => processSingleFile(f));
         await Promise.all(uploadPromises);
 
         toast({
@@ -355,6 +352,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
        });
     } finally {
         ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
+        // We keep the uploadableFiles state to show the final results
         setIsSubmitting(false);
     }
   }
@@ -636,7 +634,7 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
                <h3 className="text-lg font-medium">Upload Progress</h3>
                <div className='space-y-2'>
                 {uploadableFiles.map(f => (
-                  <div key={f.path}>
+                  <div key={f.id}>
                     <div className="w-full">
                         <div className="flex items-center gap-2 text-sm">
                           {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
@@ -675,5 +673,3 @@ const processSingleFile = async (file: File, publicId: string, moduleName?: stri
     </Form>
   );
 }
-
-    
