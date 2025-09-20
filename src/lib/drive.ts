@@ -48,64 +48,61 @@ export async function getFilesFromDrive(
         fields: 'files(id, name)' 
     });
 
-    if (!subjectFoldersRes.data.files) return [];
-
+    const staticSubjectsForSemester = vtuResources[scheme as keyof typeof vtuResources]?.[branch as keyof typeof vtuResources]?.[semester as keyof typeof vtuResources] || [];
     const subjectsMap = new Map<string, Subject>();
     
-    // Get static data for merging later
-    const staticSubjectsForSemester = vtuResources[scheme as keyof typeof vtuResources]?.[branch as keyof typeof vtuResources]?.[semester as keyof typeof vtuResources] || [];
-
-    for (const subjectFolder of subjectFoldersRes.data.files) {
-        if (subject && subjectFolder.name !== subject) continue;
-
-        const subjectName = subjectFolder.name;
-        const subjectId = subjectFolder.id;
-        
-        if (!subjectId || !subjectName) continue;
-
-        // Initialize subject from static data if available
-        const staticSubjectData = staticSubjectsForSemester.find(s => s.name === subjectName);
-        const newSubject: Subject = staticSubjectData 
-            ? JSON.parse(JSON.stringify(staticSubjectData))
-            : { id: subjectId, name: subjectName, notes: {}, questionPapers: [] };
-        
-        // Get all files within this subject folder
-        const filesQuery = `'${subjectId}' in parents and trashed=false`;
-        const filesRes = await drive.files.list({
-            q: filesQuery,
-            fields: 'files(id, name, webViewLink, appProperties)',
-        });
-        
-        if (!filesRes.data.files) continue;
-
-        for (const file of filesRes.data.files) {
-            if (!file.id || !file.name || !file.webViewLink || !file.appProperties) continue;
-
-            const resourceFile: ResourceFile = {
-                name: file.name,
-                url: file.webViewLink,
-                summary: file.appProperties.summary || ''
-            };
-
-            const resourceType = file.appProperties.resourceType;
-            if (resourceType === 'notes') {
-                const module = file.appProperties.module;
-                if (module) {
-                    newSubject.notes[module] = resourceFile;
-                }
-            } else if (resourceType === 'questionPaper') {
-                newSubject.questionPapers.push(resourceFile);
-            }
-        }
-        subjectsMap.set(subjectName, newSubject);
-    }
-    
-    // Add static subjects that didn't have dynamic content
-     staticSubjectsForSemester.forEach(staticSub => {
-        if (!subjectsMap.has(staticSub.name)) {
-            subjectsMap.set(staticSub.name, staticSub);
-        }
+    // Initialize map with static data
+    staticSubjectsForSemester.forEach(staticSub => {
+        subjectsMap.set(staticSub.name, JSON.parse(JSON.stringify(staticSub)));
     });
 
+    if (subjectFoldersRes.data.files && subjectFoldersRes.data.files.length > 0) {
+        for (const subjectFolder of subjectFoldersRes.data.files) {
+            if (subject && subjectFolder.name !== subject) continue;
+            if (!subjectFolder.id || !subjectFolder.name) continue;
+
+            const subjectName = subjectFolder.name;
+            let currentSubject = subjectsMap.get(subjectName);
+
+            if (!currentSubject) {
+                currentSubject = { id: subjectFolder.id, name: subjectName, notes: {}, questionPapers: [] };
+            }
+
+            // Get all files within this subject folder by traversing resource type folders
+            for (const resourceType of ['notes', 'questionPaper']) {
+                const resourceTypeFolderId = await findFolderId(drive, subjectFolder.id, resourceType);
+                if (!resourceTypeFolderId) continue;
+                
+                const filesQuery = `'${resourceTypeFolderId}' in parents and trashed=false`;
+                const filesRes = await drive.files.list({
+                    q: filesQuery,
+                    fields: 'files(id, name, webViewLink, appProperties)',
+                });
+
+                if (filesRes.data.files) {
+                    for (const file of filesRes.data.files) {
+                        if (!file.id || !file.name || !file.webViewLink || !file.appProperties) continue;
+
+                        const resourceFile: ResourceFile = {
+                            name: file.name,
+                            url: file.webViewLink,
+                            summary: file.appProperties.summary || ''
+                        };
+
+                        if (resourceType === 'notes') {
+                            const module = file.appProperties.module;
+                            if (module) {
+                                currentSubject.notes[module] = resourceFile;
+                            }
+                        } else if (resourceType === 'questionPaper') {
+                            currentSubject.questionPapers.push(resourceFile);
+                        }
+                    }
+                }
+            }
+             subjectsMap.set(subjectName, currentSubject);
+        }
+    }
+    
     return Array.from(subjectsMap.values());
 }

@@ -47,11 +47,11 @@ function ResourceItem({ resource }: { resource: ResourceFile }) {
 }
 
 export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialogProps) {
-  const hasNotes = subject.notes && Object.values(subject.notes).length > 0;
-  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.length > 0;
-
+  const hasNotes = subject.notes && Object.values(subject.notes).some(r => r && r.url !=='#');
+  const hasQuestionPapers = subject.questionPapers && subject.questionPapers.some(r => r && r.url !== '#');
+  
   const notesModules = Object.entries(subject.notes || {}).sort(([a], [b]) => a.localeCompare(b));
-  const questionPapers = (subject.questionPapers || []).filter(qp => qp && qp.url);
+  const questionPapers = (subject.questionPapers || []).filter(qp => qp && qp.url && qp.url !=='#');
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -65,7 +65,7 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
               <div>
                   <h4 className="font-semibold mb-2 flex items-center"><Book className="mr-2 h-4 w-4"/>Notes</h4>
                   <Separator />
-                  <Accordion type="single" collapsible className="w-full">
+                  <Accordion type="single" collapsible className="w-full" defaultValue={notesModules.length > 0 ? notesModules[0][0] : undefined}>
                      {notesModules.map(([module, resourceFile]) => (
                         <AccordionItem value={module} key={module}>
                             <AccordionTrigger>{`Module ${module.replace('module', '')}`}</AccordionTrigger>
