@@ -79,11 +79,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  if (loading || (!user && pathname !== '/login')) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (!user && pathname !== '/login') {
+     return (
+        <div className="flex h-screen items-center justify-center">
+          <p>Redirecting to login...</p>
+          <Loader2 className="ml-4 h-12 w-12 animate-spin text-primary" />
+        </div>
     );
   }
 
