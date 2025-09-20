@@ -2,16 +2,23 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, User as FirebaseUser, getAdditionalUserInfo } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+
+// A mock user object for demonstration
+const mockUser = {
+  uid: '12345',
+  email: 'test.user@example.com',
+  displayName: 'Test User',
+  photoURL: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
+};
 
 interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  accessToken?: string;
 }
 
 interface AuthContextType {
@@ -30,48 +37,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const tokenResult = await firebaseUser.getIdTokenResult();
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          accessToken: tokenResult.token,
-        });
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // Simulate checking auth state
+    const timer = setTimeout(() => {
+        // To test the logged-out state, you can set this to null
+        // setUser(null);
+        setUser(mockUser);
+        setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (!loading && !user && pathname !== '/login') {
       router.replace('/login');
     }
+     if (!loading && user && pathname === '/login') {
+      router.replace('/');
+    }
   }, [user, loading, pathname, router]);
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/drive.file');
-    try {
-      await signInWithPopup(auth, provider);
-      router.push('/');
-    } catch (error) {
-      console.error("Error during Google sign-in:", error);
-    }
+    setLoading(true);
+    // This is a mock sign-in.
+    setTimeout(() => {
+        setUser(mockUser);
+        setLoading(false);
+        router.push('/');
+    }, 1000);
   };
 
   const logout = async () => {
-    await signOut(auth);
-    router.push('/login');
+    setLoading(true);
+    setTimeout(() => {
+        setUser(null);
+        setLoading(false);
+        router.push('/login');
+    }, 500);
   };
-
-  if (loading || (!user && pathname !== '/login')) {
+  
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
