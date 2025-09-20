@@ -4,12 +4,12 @@ import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "FIREBASE_API_KEY",
-  authDomain: "FIREBASE_AUTH_DOMAIN",
-  projectId: "FIREBASE_PROJECT_ID",
-  storageBucket: "FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
-  appId: "FIREBASE_APP_ID"
+  apiKey: "AIzaSyAWfHPsEOU50o5oLLNKF0YycHlyNF6gjKA",
+  authDomain: "vtu-assistant-rkmf1.firebaseapp.com",
+  projectId: "vtu-assistant-rkmf1",
+  storageBucket: "vtu-assistant-rkmf1.appspot.com",
+  messagingSenderId: "998939257663",
+  appId: "1:998939257663:web:1b33f669b722eaa991c18a"
 };
 
 
