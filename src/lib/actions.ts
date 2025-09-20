@@ -3,9 +3,6 @@
 
 import { vtuChatbot } from '@/ai/flows/vtu-chatbot';
 import { summarizeResource } from '@/ai/flows/resource-summarization';
-import { getFileAsBuffer } from './firebase';
-import { updateFileContext } from './cloudinary';
-import { ResourceFile } from './data';
 
 const VTU_RESOURCES_TEXT = `
 Visvesvaraya Technological University (VTU) is one of the largest technological universities in India.
@@ -44,27 +41,3 @@ export async function getChatbotResponse(
     return { error: 'An unexpected error occurred. Please try again.' };
   }
 }
-
-export type ResourceMetadata = {
-  scheme: string;
-  branch: string;
-  semester: string;
-  subject: string;
-  resourceType: 'notes' | 'questionPaper';
-  module?: string;
-  file: Omit<ResourceFile, 'summary'> & { publicId: string };
-};
-
-export async function saveResourceMetadata(metadata: ResourceMetadata) {
-  // This function is no longer needed as context is saved directly during upload.
-  // It's kept for compatibility in case it's used elsewhere, but can be removed.
-  return { success: true };
-}
-
-
-export async function summarizeAndStore(publicId: string): Promise<{ success: boolean, error?: string }> {
-  // This feature is temporarily disabled.
-  return { success: true };
-}
-
-    

@@ -1,33 +1,39 @@
 
 import { NextResponse } from 'next/server';
-import { getFilesForSubject } from '@/lib/cloudinary';
-import { Subject } from '@/lib/data';
-
-// Load environment variables on the server
-require('dotenv').config();
+import { getFilesFromDrive } from '@/lib/drive';
+import { getAuth } from "firebase-admin/auth";
+import { adminAuth } from '@/lib/firebase-admin';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scheme = searchParams.get('scheme');
   const branch = searchParams.get('branch');
   const semester = searchParams.get('semester');
-  const subjectNameParam = searchParams.get('subject');
+  const subjectName = searchParams.get('subject');
+  const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
+
+  if (!idToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   if (!scheme || !branch || !semester) {
     return NextResponse.json({ error: 'Missing required query parameters' }, { status: 400 });
   }
-  
-  const subjectName = subjectNameParam ? decodeURIComponent(subjectNameParam.trim()) : undefined;
 
   try {
-    const basePath = `resources/${scheme}/${branch}/${semester}`;
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const userId = decodedToken.uid;
     
-    const dynamicSubjects = await getFilesForSubject(basePath, subjectName);
-        
-    return NextResponse.json(dynamicSubjects);
+    const resources = await getFilesFromDrive(userId, { scheme, branch, semester, subject: subjectName });
 
-  } catch (error) {
+    return NextResponse.json(resources);
+
+  } catch (error: any) {
     console.error('Failed to retrieve resources:', error);
-    return NextResponse.json({ error: 'Failed to retrieve resources' }, { status: 500 });
+    if (error.code === 'auth/id-token-expired') {
+        return NextResponse.json({ error: 'Authentication token has expired. Please log in again.' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Failed to retrieve resources from Google Drive' }, { status: 500 });
   }
 }
+

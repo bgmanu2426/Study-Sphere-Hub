@@ -6,7 +6,7 @@ import { CourseSelector } from './course-selector';
 import { ResourceList } from './resource-list';
 import { Subject } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { vtuResources } from '@/lib/vtu-data';
+import { useAuth } from '@/context/auth-context';
 
 export function HomePageClient() {
   const [selectedFilters, setSelectedFilters] = useState<{
@@ -19,106 +19,34 @@ export function HomePageClient() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  const getStaticSubjects = (scheme: string, branch: string, semester: string): Subject[] => {
-    const schemeData = vtuResources[scheme as keyof typeof vtuResources];
-    if (!schemeData) return [];
-    const branchData = schemeData[branch as keyof typeof schemeData];
-    if (!branchData) return [];
-    const semesterData = branchData[semester as keyof typeof branchData];
-    if (!semesterData) return [];
-
-    return semesterData.map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      notes: Object.keys(s.notes || {}).reduce((acc, key) => {
-        acc[key] = { name: `Module ${key.replace('module', '')}`, url: s.notes[key] || '#', summary: '' };
-        return acc;
-      }, {} as { [key: string]: any }),
-      questionPapers: [
-        ...(s.questionPapers?.current ? [{ name: 'Current', url: s.questionPapers.current, summary: '' }] : []),
-        ...(s.questionPapers?.previous ? [{ name: 'Previous', url: s.questionPapers.previous, summary: '' }] : []),
-      ]
-    }));
-  }
+  const { user } = useAuth();
 
   const handleSearch = async (filters: { scheme: string; branch: string; year: string; semester: string }) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Not Authenticated', description: 'Please log in to search for resources.'});
+      return;
+    }
+
     setIsLoading(true);
     setSelectedFilters(filters);
     
     try {
       const { scheme, branch, semester } = filters;
+      const idToken = await user.getIdToken();
       
-      const subjectsMap = new Map<string, Subject>();
-      
-      // 1. Get the base structure from static data
-      const staticSubjects = getStaticSubjects(scheme, branch, semester);
-      staticSubjects.forEach(subject => {
-        subjectsMap.set(subject.name.trim(), JSON.parse(JSON.stringify(subject))); // Deep copy
+      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
       });
-
-      // 2. Fetch dynamic resources from the API
-      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`);
       
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to fetch resources.');
       }
       
-      const dynamicSubjects: Subject[] = await response.json();
-
-      // 3. Merge dynamic subjects into the static structure
-      for (const dynamicSubject of dynamicSubjects) {
-          const subjectId = dynamicSubject.name.trim();
-          let existingSubject = subjectsMap.get(subjectId);
-
-          if (!existingSubject) {
-             const staticBase = staticSubjects.find(s => s.name.trim() === subjectId);
-             if (staticBase) {
-                existingSubject = JSON.parse(JSON.stringify(staticBase));
-             } else {
-                 existingSubject = {
-                    id: subjectId,
-                    name: subjectId,
-                    notes: {},
-                    questionPapers: []
-                 };
-             }
-             subjectsMap.set(subjectId, existingSubject);
-          }
-          
-          // Merge notes, ensuring we don't lose the module name but update dynamic content
-          for (const moduleKey in dynamicSubject.notes) {
-            const dynamicNote = dynamicSubject.notes[moduleKey];
-            if (existingSubject.notes[moduleKey]) {
-                // Update existing static note with dynamic data
-                existingSubject.notes[moduleKey].url = dynamicNote.url;
-                existingSubject.notes[moduleKey].summary = dynamicNote.summary;
-                (existingSubject.notes[moduleKey] as any).publicId = (dynamicNote as any).publicId;
-            } else {
-                // Add new note if it doesn't exist in static data
-                existingSubject.notes[moduleKey] = dynamicNote;
-            }
-          }
-
-          // Merge question papers, avoiding duplicates
-          const existingQpUrls = new Set(existingSubject.questionPapers.map(qp => qp.url));
-          dynamicSubject.questionPapers.forEach(dynamicQp => {
-              if (!existingQpUrls.has(dynamicQp.url)) {
-                  existingSubject!.questionPapers.push(dynamicQp);
-                  existingQpUrls.add(dynamicQp.url);
-              } else {
-                 // If URL exists, update it with dynamic data like publicId
-                 const qpToUpdate = existingSubject!.questionPapers.find(qp => qp.url === dynamicQp.url);
-                 if (qpToUpdate) {
-                    (qpToUpdate as any).publicId = (dynamicQp as any).publicId;
-                    qpToUpdate.summary = dynamicQp.summary;
-                 }
-              }
-          });
-      }
-
-      setSubjects(Array.from(subjectsMap.values()));
+      const fetchedSubjects: Subject[] = await response.json();
+      setSubjects(fetchedSubjects);
 
     } catch (error: any) {
       console.error(error);

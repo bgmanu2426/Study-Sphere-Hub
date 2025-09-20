@@ -23,18 +23,19 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { schemes, branches, years, semesters as allSemesters, cycles, Subject, ResourceFile } from '@/lib/data';
+import { schemes, branches, years, semesters as allSemesters, cycles, Subject } from '@/lib/data';
 import { vtuResources } from '@/lib/vtu-data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, Trash2, XCircle, ExternalLink } from 'lucide-react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Loader2, Upload, File as FileIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { deleteFileByPath } from '@/lib/cloudinary';
-import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
+import { uploadFileToDrive } from '@/ai/flows/upload-flow';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
-const fileSchema = z.custom<File[]>(files => Array.isArray(files) && files.every(file => file instanceof File), "Please upload valid files.").optional();
-
+const fileSchema = z.instanceof(File).refine(file => file.size < MAX_FILE_SIZE_BYTES, {
+    message: `File must be less than ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB`,
+});
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
@@ -43,59 +44,26 @@ const formSchema = z.object({
   semester: z.string().min(1, 'Please select a semester'),
   subject: z.string().min(1, 'Please select a subject'),
   resourceType: z.enum(['notes', 'questionPaper']),
-  questionPaperFile: fileSchema,
-  module1Files: fileSchema,
-  module2Files: fileSchema,
-  module3Files: fileSchema,
-  module4Files: fileSchema,
-  module5Files: fileSchema,
+  file: fileSchema,
+  module: z.string().optional(),
 }).refine(data => {
     if (data.resourceType === 'notes') {
-        const notesFiles = [
-            data.module1Files,
-            data.module2Files,
-            data.module3Files,
-            data.module4Files,
-            data.module5Files,
-        ].some(files => files && files.length > 0);
-        return notesFiles;
+        return !!data.module;
     }
-    if (data.resourceType === 'questionPaper') {
-        return data.questionPaperFile && data.questionPaperFile.length > 0;
-    }
-    return false;
+    return true;
 }, {
-  message: 'Please select at least one file to upload for the chosen resource type.',
-  path: ['resourceType'], 
+    message: "Please select a module for notes.",
+    path: ['module'],
 });
-
 
 type FormValues = z.infer<typeof formSchema>;
 
-type UploadableFile = {
-  file: File;
-  id: string; // Unique ID for tracking within the component state
-  progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'error' | 'canceled';
-  module?: string;
-  url?: string;
-  publicId?: string;
-  errorMessage?: string;
-}
-
-type UploadFormProps = {
-  cloudName: string;
-  uploadPreset: string;
-};
-
-
-export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
+export function UploadForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadableFiles, setUploadableFiles] = useState<UploadableFile[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'complete' | 'error'>('pending');
   const { toast } = useToast();
-  const [existingSubject, setExistingSubject] = useState<Subject | null>(null);
-  const [isFetchingSubject, setIsFetchingSubject] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const { user } = useAuth();
   const [availableSubjects, setAvailableSubjects] = useState<{ id: string, name: string }[]>([]);
 
   const form = useForm<FormValues>({
@@ -107,16 +75,17 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
       semester: '',
       subject: '',
       resourceType: 'notes',
+      module: 'module1',
     },
   });
 
-  const { watch, resetField, trigger, getValues } = form;
+  const { watch, reset, resetField } = form;
   const watchedScheme = watch('scheme');
   const watchedBranch = watch('branch');
-  const watchedYear = watch('year');
   const watchedSemester = watch('semester');
-  const watchedSubject = watch('subject');
-  
+  const selectedYear = watch('year');
+  const resourceType = watch('resourceType');
+
   useEffect(() => {
     if (watchedScheme && watchedBranch && watchedSemester) {
       const schemeData = vtuResources[watchedScheme as keyof typeof vtuResources];
@@ -127,58 +96,8 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
       setAvailableSubjects([]);
     }
     resetField('subject');
-    setExistingSubject(null);
   }, [watchedScheme, watchedBranch, watchedSemester, resetField]);
-
-
-  const fetchSubject = useCallback(async () => {
-    const { scheme, branch, semester, subject: subjectId } = getValues();
-
-    if (!scheme || !branch || !semester || !subjectId) {
-      setExistingSubject(null);
-      return;
-    }
-
-    setIsFetchingSubject(true);
-    try {
-      const subjectName = availableSubjects.find(s => s.id === subjectId)?.name || '';
-      if (!subjectName) {
-          setExistingSubject(null);
-          setIsFetchingSubject(false);
-          return;
-      }
-      
-      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}&subject=${encodeURIComponent(subjectName)}`);
-      if (response.ok) {
-        const data = await response.json();
-        // Assuming the API returns a single subject object or an empty array
-        const subjectData = Array.isArray(data) ? data[0] : data;
-        setExistingSubject(subjectData || null);
-      } else {
-        setExistingSubject(null);
-      }
-    } catch (error) {
-      console.error("Failed to fetch subject details", error);
-      setExistingSubject(null);
-    } finally {
-      setIsFetchingSubject(false);
-    }
-  }, [getValues, availableSubjects]);
-
-
-  useEffect(() => {
-    if (watchedSubject) {
-        fetchSubject();
-    } else {
-        setExistingSubject(null);
-    }
-  }, [watchedSubject, fetchSubject]);
-
-
-
-  const selectedYear = form.watch('year');
-  const resourceType = form.watch('resourceType');
-
+  
   const availableSemesters = useMemo(() => {
     if (!selectedYear) return [];
     if (selectedYear === '1') return cycles;
@@ -194,216 +113,78 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
         return semNum >= startSem && semNum <= endSem;
     });
   }, [selectedYear]);
-  
+
   const semesterLabel = selectedYear === '1' ? 'Cycle' : 'Semester';
-  
-  const handleDelete = async (publicId: string | undefined) => {
-    if (!publicId) {
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not determine the file ID to delete.' });
-      return;
-    }
-    if (!window.confirm("Are you sure you want to delete this file? This action cannot be undone.")) {
-      return;
-    }
-    setIsDeleting(publicId);
-    try {
-      await deleteFileByPath(publicId);
-      toast({ title: 'File Deleted', description: 'The file has been successfully deleted.' });
-      await fetchSubject(); // Refresh the file list after deletion
-    } catch (error) {
-      console.error("Deletion failed:", error);
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: 'Could not delete the file. Please try again.' });
-    } finally {
-      setIsDeleting(null);
-    }
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
   };
-
-  const getPublicId = (): string => {
-    // Generate a random ID to ensure it's always unique and clean.
-    return crypto.randomUUID().replace(/-/g, '');
-  };
-
-  const processSingleFile = async (uploadableFile: UploadableFile): Promise<string> => {
-    const { file, id, module } = uploadableFile;
-    const { scheme, branch, semester, subject: subjectId, resourceType } = getValues();
-    const subjectName = availableSubjects.find(s => s.id === subjectId)?.name;
-    
-    if (!subjectName) {
-        const errorMsg = "Could not determine subject name for upload.";
-        console.error(errorMsg);
-        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage: errorMsg } : f));
-        throw new Error(errorMsg);
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    
-    // Generate a clean public_id and specify the folder
-    const publicId = getPublicId();
-    formData.append('public_id', publicId);
-    
-    const folderPath = `resources/${scheme}/${branch}/${semester}/${subjectName}/${resourceType === 'notes' ? 'notes' : 'questionPapers'}`;
-    formData.append('folder', folderPath);
-
-    const context = {
-        scheme: scheme,
-        branch: branch,
-        semester: semester,
-        subject: subjectName,
-        resourcetype: resourceType,
-        module: module || '',
-        name: file.name, // Store original filename in context
-    };
-    const contextString = Object.entries(context)
-                                .map(([key, value]) => `${key}=${value}`)
-                                .join('|');
-    formData.append('context', contextString);
-
-    const url = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
-
-    try {
-        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'uploading', progress: 50 } : f));
-
-        const response = await fetch(url, {
-            method: 'POST',
-            body: formData,
-            mode: 'cors',
-        });
-
-        const responseData = await response.json();
-
-        if (response.ok) {
-            const finalPublicId = responseData.public_id;
-            setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'complete', progress: 100, url: responseData.secure_url, publicId: finalPublicId } : f));
-            toast({
-                title: 'Upload Successful',
-                description: `Successfully uploaded "${file.name}".`,
-            });
-            return finalPublicId;
-        } else {
-            const errorMessage = responseData.error.message;
-            console.error(`Upload failed for ${file.name}:`, errorMessage);
-            setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage } : f));
-            toast({
-                variant: 'destructive',
-                title: `Upload failed for ${file.name}`,
-                description: errorMessage
-            });
-            throw new Error(errorMessage);
-        }
-    } catch (error: any) {
-        const errorMessage = error.message || 'A network error occurred during upload.';
-        console.error(errorMessage);
-        setUploadableFiles(prev => prev.map(f => f.id === id ? { ...f, status: 'error', errorMessage } : f));
-        toast({
-           variant: 'destructive',
-           title: `Upload failed for ${file.name}`,
-           description: errorMessage
-        });
-        throw new Error(errorMessage);
-    }
-};
-
 
   async function onSubmit(values: FormValues) {
-     const isValid = await trigger();
-     if (!isValid) {
-        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fill all required fields.' });
-        return;
-     }
-    
-    const allFilesToProcess: UploadableFile[] = [];
-    
-    const fileFields: (keyof FormValues)[] = ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'];
-
-    for (const field of fileFields) {
-        const files = values[field] as File[] | undefined;
-        if (files) {
-            for (const file of files) {
-                if (file.size > MAX_FILE_SIZE_BYTES) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'File Too Large',
-                        description: `"${file.name}" is larger than the 10MB limit and will not be uploaded.`,
-                    });
-                    continue; // Skip this file
-                }
-                const moduleName = field.startsWith('module') ? field.replace('Files', '') : undefined;
-                allFilesToProcess.push({ file, id: crypto.randomUUID(), progress: 0, status: 'pending', module: moduleName });
-            }
-        }
-    }
-
-
-    if (allFilesToProcess.length === 0) {
-        toast({ title: 'No files selected', description: 'No valid files were selected for upload.' });
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload files.' });
         return;
     }
     
     setIsSubmitting(true);
-    setUploadableFiles(allFilesToProcess);
-    
-    try {
-        const uploadPromises = allFilesToProcess.map(f => processSingleFile(f));
-        await Promise.all(uploadPromises);
+    setUploadStatus('uploading');
+    setUploadProgress(10);
 
-        toast({
-          title: "All uploads complete",
-          description: "All selected files have been processed.",
+    try {
+        const idToken = await user.getIdToken();
+        setUploadProgress(20);
+
+        const fileContent = await fileToBase64(values.file);
+        setUploadProgress(50);
+        
+        const subjectName = availableSubjects.find(s => s.id === values.subject)?.name || 'Unknown Subject';
+
+        const result = await uploadFileToDrive({
+            fileName: values.file.name,
+            fileContent,
+            mimeType: values.file.type,
+            idToken,
+            folderPath: `VTU Assistant/${values.scheme}/${values.branch}/${values.semester}/${subjectName}/${values.resourceType}`,
+            metadata: {
+                module: values.module || '',
+                resourceType: values.resourceType,
+                subject: subjectName,
+                scheme: values.scheme,
+                branch: values.branch,
+                semester: values.semester,
+            }
         });
-        await fetchSubject(); 
-    } catch(error) {
-       toast({
-          variant: 'destructive',
-          title: "An upload failed",
-          description: "One or more files failed to upload. Please check the list and try again.",
-       });
+
+        if (result.success && result.fileId) {
+            setUploadProgress(100);
+            setUploadStatus('complete');
+            toast({
+                title: 'Upload Successful!',
+                description: `"${values.file.name}" has been uploaded to your Google Drive.`,
+            });
+            reset();
+            setTimeout(() => {
+              setUploadStatus('pending');
+            }, 2000);
+        } else {
+            throw new Error(result.error || "An unknown error occurred during upload.");
+        }
+    } catch (error: any) {
+        setUploadStatus('error');
+        toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: error.message || 'Could not upload the file. Please try again.',
+        });
     } finally {
-        ['module1Files', 'module2Files', 'module3Files', 'module4Files', 'module5Files', 'questionPaperFile'].forEach(field => resetField(field as keyof FormValues));
-        // We keep the uploadableFiles state to show the final results
         setIsSubmitting(false);
     }
   }
-
-  const renderExistingFiles = (files: { [key: string]: ResourceFile } | ResourceFile[], isNotes: boolean) => {
-    const fileList = isNotes ? Object.values(files as { [key: string]: ResourceFile }).filter(f => f) : (files as ResourceFile[]);
-    if (fileList.length === 0) {
-        return <p className="text-sm text-muted-foreground">No existing files.</p>;
-    }
-
-
-    return (
-      <div className="space-y-2">
-        {fileList.map((file) => {
-          if (!file || !file.url) return null;
-          
-          const publicId = (file as any).publicId; 
-
-          return (
-            <div key={file.url} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-                <div className='flex items-center gap-2 truncate'>
-                    <FileIcon className="h-4 w-4 text-muted-foreground" />
-                    <Link href={file.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
-                        {file.name}
-                    </Link>
-                </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => handleDelete(publicId)}
-                disabled={isDeleting === publicId}
-              >
-                {isDeleting === publicId ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-              </Button>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
   
   return (
     <Form {...form}>
@@ -542,7 +323,7 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Resource Type</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || !watchedSubject}>
+                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select resource type" />
@@ -559,123 +340,75 @@ export function UploadForm({ cloudName, uploadPreset }: UploadFormProps) {
               />
         </div>
        
-        {resourceType === 'notes' && watchedSubject && (
-          <div className="space-y-4 rounded-lg border p-4">
-             <div className="flex items-center">
-              <h3 className="text-lg font-medium">Module Notes</h3>
-              {isFetchingSubject && <Loader2 className="ml-2 h-5 w-5 animate-spin" />}
-            </div>
-            <FormDescription>Upload one PDF file (max 10MB) for each module. Uploading a new file will replace the existing one.</FormDescription>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[1, 2, 3, 4, 5].map((moduleNumber) => {
-                 const moduleName = `module${moduleNumber}`;
-                 const existingNotesForModule = existingSubject?.notes?.[moduleName] ? { [moduleName]: existingSubject.notes[moduleName] } : {};
-
-                 return (
-                    <div key={moduleNumber} className="space-y-2">
-                        <FormField
-                            control={form.control}
-                            name={`module${moduleNumber}Files` as keyof FormValues}
-                            render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Module {moduleNumber}</FormLabel>
-                                <FormControl>
-                                <Input 
-                                    type="file" 
-                                    accept="application/pdf"
-                                    multiple={false}
-                                    disabled={isSubmitting}
-                                    onChange={(e) => onChange(e.target.files ? Array.from(e.target.files) : [])}
-                                    {...rest}
-                                />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         <div className="space-y-2 pt-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground">EXISTING FILE</h4>
-                             {renderExistingFiles(existingNotesForModule, true)}
-                        </div>
-                    </div>
-                 )
-              })}
-            </div>
-          </div>
-        )}
-
-        {resourceType === 'questionPaper' && watchedSubject && (
-          <div className="space-y-4 rounded-lg border p-4">
-             <div className="flex items-center">
-                <h3 className="text-lg font-medium">Question Papers</h3>
-                {isFetchingSubject && <Loader2 className="ml-2 h-5 w-5 animate-spin" />}
-            </div>
-            <FormField
+        {resourceType === 'notes' && (
+           <FormField
               control={form.control}
-              name="questionPaperFile"
-              render={({ field: { onChange, value, ...rest } }) => (
+              name="module"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Upload New Question Paper</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="file" 
-                      accept="application/pdf"
-                      multiple
-                      disabled={isSubmitting}
-                      onChange={(e) => onChange(e.target.files ? Array.from(e.target.files) : [])}
-                      {...rest}
-                    />
-                  </FormControl>
-                  <FormDescription>Please upload one or more PDF files (max 10MB each).</FormDescription>
+                  <FormLabel>Module</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select module" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {[1,2,3,4,5].map(m => (
+                        <SelectItem key={m} value={`module${m}`}>{`Module ${m}`}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-semibold text-muted-foreground">EXISTING FILES</h4>
-              {renderExistingFiles(existingSubject?.questionPapers || [], false)}
-            </div>
-          </div>
         )}
+      
+        <FormField
+            control={form.control}
+            name="file"
+            render={({ field: { onChange, ...field } }) => (
+                <FormItem>
+                    <FormLabel>File</FormLabel>
+                    <FormControl>
+                        <Input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                onChange(file);
+                            }}
+                            {...field}
+                        />
+                    </FormControl>
+                    <FormDescription>Upload one PDF file (max 10MB).</FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
        
-        {uploadableFiles.length > 0 && (
-            <div className="space-y-4 rounded-lg border p-4">
-               <h3 className="text-lg font-medium">Upload Progress</h3>
-               <div className='space-y-2'>
-                {uploadableFiles.map(f => (
-                  <div key={f.id}>
-                    <div className="w-full">
-                        <div className="flex items-center gap-2 text-sm">
-                          {f.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
-                          {f.status === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
-                          {f.status === 'canceled' && <XCircle className="w-4 h-4 text-gray-500"/>}
-                          {f.status === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
-                          {f.status === 'pending' && <FileIcon className="w-4 h-4 text-muted-foreground"/>}
-                          <span className="truncate flex-1">{f.file.name}</span>
-                          {f.status === 'complete' && f.url && (
-                             <Link href={f.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                <ExternalLink className="w-4 h-4" />
-                            </Link>
-                          )}
-                          <span className="text-muted-foreground text-xs capitalize">{f.status}</span>
-                        </div>
-                        {(f.status === 'uploading') && <Progress value={f.progress} className="h-2 mt-1" />}
-                        {f.status === 'error' && <p className="text-xs text-destructive mt-1">{f.errorMessage}</p>}
-                    </div>
-                  </div>
-                ))}
-               </div>
+        {isSubmitting && (
+            <div className="space-y-2">
+               <div className="flex items-center gap-2 text-sm">
+                  {uploadStatus === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
+                  {uploadStatus === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
+                  {uploadStatus === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
+                  <span className="truncate flex-1">Uploading file...</span>
+                  <span className="text-muted-foreground text-xs capitalize">{uploadStatus}</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2 mt-1" />
             </div>
         )}
        
         <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isSubmitting || isFetchingSubject || !watchedSubject} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} className="hover:bg-accent/90">
+            <Button type="submit" disabled={isSubmitting} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} className="hover:bg-accent/90">
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                Upload File(s)
+                Upload File
             </Button>
         </div>
       </form>
