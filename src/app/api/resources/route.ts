@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getFilesFromDrive } from '@/lib/drive';
 import { adminAuth } from '@/lib/firebase-admin';
@@ -21,10 +22,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const userId = decodedToken.uid;
+    // We verify the token here just to ensure the user is authenticated before proceeding.
+    // The token is passed to getFilesFromDrive for potential use there as well.
+    await adminAuth.verifyIdToken(idToken);
     
-    const resources = await getFilesFromDrive(userId, { scheme, branch, semester, subject: subjectName });
+    const resources = await getFilesFromDrive(idToken, { scheme, branch, semester, subject: subjectName });
 
     return NextResponse.json(resources);
 
