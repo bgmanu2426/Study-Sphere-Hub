@@ -24,17 +24,12 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { schemes, branches, years, semesters as allSemesters, cycles, Subject } from '@/lib/data';
 import { vtuResources } from '@/lib/vtu-data';
-import { Loader2, Upload, File as FileIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Upload, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { uploadFileToDrive } from '@/ai/flows/upload-flow';
 import { useAuth } from '@/context/auth-context';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
-
-const fileSchema = z.instanceof(File).refine(file => file.size < MAX_FILE_SIZE_BYTES, {
-    message: `File must be less than ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB`,
-});
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
@@ -42,11 +37,12 @@ const formSchema = z.object({
   year: z.string().min(1, 'Please select a year'),
   semester: z.string().min(1, 'Please select a semester'),
   subject: z.string().min(1, 'Please select a subject'),
-  resourceType: z.enum(['notes', 'questionPaper']),
-  file: fileSchema,
+  resourceType: z.enum(['Notes', 'Question Paper']),
+  fileUrl: z.string().url({ message: "Please enter a valid URL." }),
+  fileName: z.string().min(1, "File name is required."),
   module: z.string().optional(),
 }).refine(data => {
-    if (data.resourceType === 'notes') {
+    if (data.resourceType === 'Notes') {
         return !!data.module;
     }
     return true;
@@ -60,8 +56,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function UploadForm() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'complete' | 'error'>('pending');
+  const [uploadStatus, setUploadStatus] = useState<'pending' | 'submitting' | 'complete' | 'error'>('pending');
   const { toast } = useToast();
   const [availableSubjects, setAvailableSubjects] = useState<{ id: string, name: string }[]>([]);
 
@@ -73,8 +68,10 @@ export function UploadForm() {
       year: '',
       semester: '',
       subject: '',
-      resourceType: 'notes',
-      module: 'module1',
+      resourceType: 'Notes',
+      module: 'Module 1',
+      fileUrl: '',
+      fileName: '',
     },
   });
 
@@ -115,58 +112,52 @@ export function UploadForm() {
 
   const semesterLabel = selectedYear === '1' ? 'Cycle' : 'Semester';
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = error => reject(error);
-    });
-  };
-
   async function onSubmit(values: FormValues) {
     if (!user) {
         toast({
             variant: 'destructive',
             title: 'Not Authenticated',
-            description: 'You must be logged in to upload a file.',
+            description: 'You must be logged in to upload a resource.',
         });
         return;
     }
     setIsSubmitting(true);
-    setUploadStatus('uploading');
-    setUploadProgress(10);
+    setUploadStatus('submitting');
 
     try {
-        setUploadProgress(20);
         const idToken = await user.getIdToken();
-        const fileContent = await fileToBase64(values.file);
-        setUploadProgress(50);
-        
         const subjectName = availableSubjects.find(s => s.id === values.subject)?.name || 'Unknown Subject';
 
-        const result = await uploadFileToDrive({
-            fileName: values.file.name,
-            fileContent,
-            mimeType: values.file.type,
-            idToken,
-            folderPath: `VTU Assistant/${values.scheme}/${values.branch}/${values.semester}/${subjectName}/${values.resourceType}`,
-            metadata: {
-                module: values.module || '',
-                resourceType: values.resourceType,
-                subject: subjectName,
-                scheme: values.scheme,
-                branch: values.branch,
-                semester: values.semester,
-            }
+        const payload = {
+          fields: {
+            "Scheme": values.scheme,
+            "Branch": values.branch,
+            "Semester": values.semester,
+            "Subject Code": values.subject,
+            "Subject Name": subjectName,
+            "Resource Type": values.resourceType,
+            "Module": values.resourceType === 'Notes' ? values.module : undefined,
+            "File Name": values.fileName,
+            "URL": values.fileUrl,
+          }
+        };
+
+        const response = await fetch('/api/resources', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify(payload),
         });
 
-        if (result.success && result.fileId) {
-            setUploadProgress(100);
+        const result = await response.json();
+
+        if (response.ok && result.id) {
             setUploadStatus('complete');
             toast({
                 title: 'Upload Successful!',
-                description: `"${values.file.name}" has been uploaded to your Google Drive.`,
+                description: `"${values.fileName}" has been added to the database.`,
             });
             reset();
             setTimeout(() => {
@@ -180,7 +171,7 @@ export function UploadForm() {
         toast({
             variant: 'destructive',
             title: 'Upload Failed',
-            description: error.message || 'Could not upload the file. Please try again.',
+            description: error.message || 'Could not add the resource. Please try again.',
         });
     } finally {
         setIsSubmitting(false);
@@ -309,7 +300,7 @@ export function UploadForm() {
                     <SelectContent>
                       {availableSubjects.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
-                          {s.name}
+                          {s.name} ({s.id})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -331,8 +322,8 @@ export function UploadForm() {
                         </Trigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="notes">Notes</SelectItem>
-                        <SelectItem value="questionPaper">Question Paper</SelectItem>
+                        <SelectItem value="Notes">Notes</SelectItem>
+                        <SelectItem value="Question Paper">Question Paper</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -341,7 +332,7 @@ export function UploadForm() {
               />
         </div>
        
-        {resourceType === 'notes' && (
+        {resourceType === 'Notes' && (
            <FormField
               control={form.control}
               name="module"
@@ -356,7 +347,7 @@ export function UploadForm() {
                     </FormControl>
                     <SelectContent>
                       {[1,2,3,4,5].map(m => (
-                        <SelectItem key={m} value={`module${m}`}>{`Module ${m}`}</SelectItem>
+                        <SelectItem key={m} value={`Module ${m}`}>{`Module ${m}`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -368,38 +359,38 @@ export function UploadForm() {
       
         <FormField
             control={form.control}
-            name="file"
-            render={({ field: { onChange, ...field } }) => (
+            name="fileName"
+            render={({ field }) => (
                 <FormItem>
-                    <FormLabel>File</FormLabel>
+                    <FormLabel>File Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Module 1 Notes" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+
+        <FormField
+            control={form.control}
+            name="fileUrl"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>File URL</FormLabel>
                     <FormControl>
                         <Input
-                            type="file"
-                            accept="application/pdf"
-                            onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                onChange(file);
-                            }}
+                            placeholder="https://example.com/path/to/your/file.pdf"
                             {...field}
                         />
                     </FormControl>
-                    <FormDescription>Upload one PDF file (max 10MB).</FormDescription>
+                    <FormDescription>Enter the publicly accessible URL to the resource.</FormDescription>
                     <FormMessage />
                 </FormItem>
             )}
         />
        
         {isSubmitting && (
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 text-sm">
-                  {uploadStatus === 'uploading' && <Loader2 className="w-4 h-4 animate-spin"/>}
-                  {uploadStatus === 'complete' && <CheckCircle2 className="w-4 h-4 text-green-500"/>}
-                  {uploadStatus === 'error' && <XCircle className="w-4 h-4 text-destructive"/>}
-                  <span className="truncate flex-1">Uploading file...</span>
-                  <span className="text-muted-foreground text-xs capitalize">{uploadStatus}</span>
-                </div>
-                <Progress value={uploadProgress} className="h-2 mt-1" />
-            </div>
+             <Progress value={uploadStatus === 'submitting' ? 50 : 100} className="h-2 mt-1" />
         )}
        
         <div className="flex justify-end pt-2">
@@ -409,7 +400,7 @@ export function UploadForm() {
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                Upload File
+                Add Resource
             </Button>
         </div>
       </form>
