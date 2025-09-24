@@ -28,6 +28,7 @@ import { Loader2, Upload, File as FileIcon, CheckCircle2, XCircle } from 'lucide
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToDrive } from '@/ai/flows/upload-flow';
+import { useAuth } from '@/context/auth-context';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -57,6 +58,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function UploadForm() {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'complete' | 'error'>('pending');
@@ -123,13 +125,21 @@ export function UploadForm() {
   };
 
   async function onSubmit(values: FormValues) {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Not Authenticated',
+            description: 'You must be logged in to upload a file.',
+        });
+        return;
+    }
     setIsSubmitting(true);
     setUploadStatus('uploading');
     setUploadProgress(10);
 
     try {
         setUploadProgress(20);
-
+        const idToken = await user.getIdToken();
         const fileContent = await fileToBase64(values.file);
         setUploadProgress(50);
         
@@ -139,8 +149,7 @@ export function UploadForm() {
             fileName: values.file.name,
             fileContent,
             mimeType: values.file.type,
-            // A placeholder token is sent as auth is removed
-            idToken: 'anonymous-token',
+            idToken,
             folderPath: `VTU Assistant/${values.scheme}/${values.branch}/${values.semester}/${subjectName}/${values.resourceType}`,
             metadata: {
                 module: values.module || '',

@@ -5,8 +5,10 @@ import { CourseSelector } from './course-selector';
 import { ResourceList } from './resource-list';
 import { Subject } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
 
 export function HomePageClient() {
+  const { user } = useAuth();
   const [selectedFilters, setSelectedFilters] = useState<{
     scheme: string;
     branch: string;
@@ -19,13 +21,27 @@ export function HomePageClient() {
   const { toast } = useToast();
 
   const handleSearch = async (filters: { scheme: string; branch: string; year: string; semester: string }) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to search for resources.',
+      });
+      return;
+    }
+
     setIsLoading(true);
     setSelectedFilters(filters);
     
     try {
       const { scheme, branch, semester } = filters;
+      const idToken = await user.getIdToken();
       
-      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`);
+      const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&semester=${semester}`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
       
       if (!response.ok) {
         const errorData = await response.json();

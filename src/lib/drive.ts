@@ -6,7 +6,11 @@ import { adminAuth } from './firebase-admin';
 import { Subject, ResourceFile } from './data';
 import { vtuResources } from './vtu-data';
 
-async function getDriveService() {
+async function getDriveService(userId: string) {
+    const decodedToken = await adminAuth.verifyIdToken(userId);
+    // This is a simplification. In a real app, you would use the user's
+    // OAuth2 tokens stored during the sign-in flow.
+    // For service account auth, you don't need user-specific tokens.
     const auth = new google.auth.GoogleAuth({
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     });
@@ -26,7 +30,7 @@ export async function getFilesFromDrive(
     userId: string, 
     filters: { scheme: string, branch: string, semester: string, subject: string | null }
 ): Promise<Subject[]> {
-    const drive = await getDriveService();
+    const drive = await getDriveService(userId);
     const { scheme, branch, semester, subject } = filters;
 
     // 1. Find base folder "VTU Assistant"

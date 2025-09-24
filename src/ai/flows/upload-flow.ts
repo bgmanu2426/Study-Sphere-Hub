@@ -8,13 +8,14 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { google } from 'googleapis';
 import { PassThrough } from 'stream';
+import { adminAuth } from '@/lib/firebase-admin';
+
 
 const UploadFileToDriveInputSchema = z.object({
   fileName: z.string().describe('The name of the file to upload.'),
   fileContent: z.string().describe('The base64 encoded content of the file.'),
   mimeType: z.string().describe('The MIME type of the file.'),
-  // The idToken is now a simple string, not necessarily a Firebase token
-  idToken: z.string().describe("The user's authentication token."),
+  idToken: z.string().describe("The user's Firebase authentication token."),
   folderPath: z.string().describe('The path in Google Drive to upload the file to, e.g., "VTU Assistant/Notes".'),
   metadata: z.record(z.string()).describe('Additional metadata for the file.'),
 });
@@ -33,9 +34,13 @@ export const uploadFileToDrive = ai.defineFlow(
   },
   async (input) => {
     try {
-        // 1. Authenticate the service account
+        // 1. Authenticate the user and get a drive service instance
+        const decodedToken = await adminAuth.verifyIdToken(input.idToken);
+        const userId = decodedToken.uid;
+
         // In a real OAuth flow, you would use the user's access token.
         // For this service-account-based approach, we use Application Default Credentials.
+        // This means the service account needs permission on the target drive/folder.
         const auth = new google.auth.GoogleAuth({
             scopes: ['https://www.googleapis.com/auth/drive.file'],
         });
@@ -71,7 +76,7 @@ export const uploadFileToDrive = ai.defineFlow(
         const fileMetadata = {
             name: input.fileName,
             parents: [parentFolderId],
-            appProperties: input.metadata,
+            appProperties: { ...input.metadata, uploadedBy: userId },
         };
 
         const buffer = Buffer.from(input.fileContent, 'base64');
@@ -100,6 +105,9 @@ export const uploadFileToDrive = ai.defineFlow(
         };
     } catch (error: any) {
       console.error("Google Drive Upload Error:", error);
+      if (error.code === 'auth/id-token-expired') {
+          return { success: false, error: 'Authentication token has expired. Please log in again.' };
+      }
       return {
         success: false,
         error: error.message || 'An unknown error occurred while uploading to Google Drive.',
