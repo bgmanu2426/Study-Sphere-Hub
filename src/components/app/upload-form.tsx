@@ -28,6 +28,8 @@ import { Loader2, Upload, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { uploadResource } from '@/ai/flows/upload-flow';
+
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -38,8 +40,9 @@ const formSchema = z.object({
   semester: z.string().min(1, 'Please select a semester'),
   subject: z.string().min(1, 'Please select a subject'),
   resourceType: z.enum(['Notes', 'Question Paper']),
-  fileUrl: z.string().url({ message: "Please enter a valid URL." }),
-  fileName: z.string().min(1, "File name is required."),
+  file: z.any()
+    .refine((files) => files?.length === 1, 'File is required.')
+    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE_BYTES, `Max file size is 10MB.`),
   module: z.string().optional(),
 }).refine(data => {
     if (data.resourceType === 'Notes') {
@@ -53,10 +56,23 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+function fileToDataUri(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            resolve(reader.result as string);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+
 export function UploadForm() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<'pending' | 'submitting' | 'complete' | 'error'>('pending');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'summarizing' | 'complete' | 'error'>('pending');
   const { toast } = useToast();
   const [availableSubjects, setAvailableSubjects] = useState<{ id: string, name: string }[]>([]);
 
@@ -69,13 +85,12 @@ export function UploadForm() {
       semester: '',
       subject: '',
       resourceType: 'Notes',
-      module: 'Module 1',
-      fileUrl: '',
-      fileName: '',
+      module: 'module1',
     },
   });
 
-  const { watch, reset, resetField } = form;
+  const { watch, reset, resetField, register } = form;
+  const fileRef = register("file");
   const watchedScheme = watch('scheme');
   const watchedBranch = watch('branch');
   const watchedSemester = watch('semester');
@@ -122,61 +137,70 @@ export function UploadForm() {
         return;
     }
     setIsSubmitting(true);
-    setUploadStatus('submitting');
+    setUploadStatus('uploading');
+    setUploadProgress(30);
 
     try {
-        const idToken = await user.getIdToken();
-        const subjectName = availableSubjects.find(s => s.id === values.subject)?.name || 'Unknown Subject';
+        const file = values.file[0] as File;
+        const fileDataUri = await fileToDataUri(file);
+        
+        setUploadProgress(60);
+        setUploadStatus('summarizing');
 
-        const payload = {
-          fields: {
-            "Scheme": values.scheme,
-            "Branch": values.branch,
-            "Semester": values.semester,
-            "Subject Code": values.subject,
-            "Subject Name": subjectName,
-            "Resource Type": values.resourceType,
-            "Module": values.resourceType === 'Notes' ? values.module : undefined,
-            "File Name": values.fileName,
-            "URL": values.fileUrl,
-          }
-        };
-
-        const response = await fetch('/api/resources', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`,
-          },
-          body: JSON.stringify(payload),
+        const result = await uploadResource({
+            scheme: values.scheme,
+            branch: values.branch,
+            semester: values.semester,
+            subject: values.subject,
+            fileName: file.name,
+            fileDataUri: fileDataUri,
+            resourceType: values.resourceType,
+            module: values.resourceType === 'Notes' ? values.module : undefined,
         });
 
-        const result = await response.json();
 
-        if (response.ok && result.id) {
+        if (result.fileId) {
+            setUploadProgress(100);
             setUploadStatus('complete');
             toast({
                 title: 'Upload Successful!',
-                description: `"${values.fileName}" has been added to the database.`,
+                description: `"${file.name}" has been uploaded to Google Drive.`,
             });
             reset();
             setTimeout(() => {
               setUploadStatus('pending');
+              setUploadProgress(0);
             }, 2000);
         } else {
-            throw new Error(result.error || "An unknown error occurred during upload.");
+            throw new Error("An unknown error occurred during upload.");
         }
     } catch (error: any) {
         setUploadStatus('error');
+        setUploadProgress(0);
         toast({
             variant: 'destructive',
             title: 'Upload Failed',
-            description: error.message || 'Could not add the resource. Please try again.',
+            description: error.message || 'Could not upload the file. Please try again.',
         });
     } finally {
         setIsSubmitting(false);
     }
   }
+
+  const statusIndicator = () => {
+    switch(uploadStatus) {
+      case 'uploading':
+        return <p className="text-sm text-muted-foreground mt-1">Uploading to Drive...</p>;
+      case 'summarizing':
+        return <p className="text-sm text-muted-foreground mt-1">Analyzing and summarizing file...</p>;
+      case 'complete':
+        return <div className="flex items-center text-sm text-green-600 mt-1"><CheckCircle2 className="mr-1 h-4 w-4" />Upload complete!</div>;
+      case 'error':
+        return <div className="flex items-center text-sm text-destructive mt-1"><XCircle className="mr-1 h-4 w-4" />Upload failed.</div>;
+      default:
+        return null;
+    }
+  };
   
   return (
     <Form {...form}>
@@ -347,7 +371,7 @@ export function UploadForm() {
                     </FormControl>
                     <SelectContent>
                       {[1,2,3,4,5].map(m => (
-                        <SelectItem key={m} value={`Module ${m}`}>{`Module ${m}`}</SelectItem>
+                        <SelectItem key={m} value={`module${m}`}>{`Module ${m}`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -358,39 +382,25 @@ export function UploadForm() {
         )}
       
         <FormField
-            control={form.control}
-            name="fileName"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>File Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Module 1 Notes" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
-
-        <FormField
-            control={form.control}
-            name="fileUrl"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>File URL</FormLabel>
-                    <FormControl>
-                        <Input
-                            placeholder="https://example.com/path/to/your/file.pdf"
-                            {...field}
-                        />
-                    </FormControl>
-                    <FormDescription>Enter the publicly accessible URL to the resource.</FormDescription>
-                    <FormMessage />
-                </FormItem>
-            )}
+          control={form.control}
+          name="file"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>File</FormLabel>
+              <FormControl>
+                <Input type="file" {...fileRef} disabled={isSubmitting} />
+              </FormControl>
+              <FormDescription>Select the PDF or document you want to upload (Max 10MB).</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
        
         {isSubmitting && (
-             <Progress value={uploadStatus === 'submitting' ? 50 : 100} className="h-2 mt-1" />
+          <div>
+             <Progress value={uploadProgress} className="h-2 mt-1" />
+             {statusIndicator()}
+          </div>
         )}
        
         <div className="flex justify-end pt-2">
@@ -400,7 +410,7 @@ export function UploadForm() {
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
                 )}
-                Add Resource
+                {isSubmitting ? 'Uploading...' : 'Upload Resource'}
             </Button>
         </div>
       </form>
