@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { schemes, branches, years, semesters as allSemesters, cycles, Subject } from '@/lib/data';
+import { schemes, branches, years, semesters as allSemesters, cycles } from '@/lib/data';
 import { vtuResources } from '@/lib/vtu-data';
 import { Loader2, Upload, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
@@ -106,7 +106,7 @@ export function UploadForm() {
       setAvailableSubjects([]);
     }
     resetField('subject');
-  }, [watchedScheme, watchedBranch, watchedSemester]);
+  }, [watchedScheme, watchedBranch, watchedSemester, resetField]);
   
   const availableSemesters = useMemo(() => {
     if (!selectedYear) return [];
