@@ -242,7 +242,7 @@ export function UploadForm() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Branch" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {branches.map((b) => (
@@ -269,7 +269,7 @@ export function UploadForm() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select Year" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {years.map((y) => (
@@ -293,7 +293,7 @@ export function UploadForm() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder={selectedYear ? `Select ${semesterLabel}`: "Select Year first"} />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {availableSemesters.map((s) => (
@@ -345,7 +345,7 @@ export function UploadForm() {
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select resource type" />
-                        </Trigger>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="Notes">Notes</SelectItem>
@@ -369,7 +369,7 @@ export function UploadForm() {
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select module" />
-                      </Trigger>
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {[1,2,3,4,5].map(m => (
