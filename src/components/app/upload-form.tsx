@@ -89,8 +89,7 @@ export function UploadForm() {
     },
   });
 
-  const { watch, reset, resetField, register } = form;
-  const fileRef = register("file");
+  const { watch, reset, resetField } = form;
   const watchedScheme = watch('scheme');
   const watchedBranch = watch('branch');
   const watchedSemester = watch('semester');
@@ -391,7 +390,7 @@ export function UploadForm() {
             <FormItem>
               <FormLabel>File</FormLabel>
               <FormControl>
-                <Input type="file" {...fileRef} disabled={isSubmitting} />
+                <Input type="file" onChange={(e) => field.onChange(e.target.files)} disabled={isSubmitting} />
               </FormControl>
               <FormDescription>Select the PDF or document you want to upload (Max 10MB).</FormDescription>
               <FormMessage />
@@ -420,3 +419,5 @@ export function UploadForm() {
     </Form>
   );
 }
+
+    
