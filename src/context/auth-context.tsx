@@ -26,12 +26,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    // For production, onAuthStateChanged will handle auth state.
+    // For the mock user, we set it directly in the login function.
+    if (process.env.NODE_ENV === 'production') {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
+        setLoading(false);
+        });
+        return () => unsubscribe();
+    } else {
+        setLoading(false);
+    }
   }, []);
 
   const signup = (email: string, password: string) => {
@@ -39,10 +44,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = (email: string, password: string) => {
+    // In development, we bypass Firebase Auth and create a mock user.
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("DEV MODE: Bypassing Firebase Auth and creating a mock user.");
+      const mockUser: FirebaseUser = {
+        uid: 'mock-user-uid-12345',
+        email: email,
+        displayName: 'Mock User',
+        photoURL: null,
+        emailVerified: true,
+        isAnonymous: false,
+        metadata: {},
+        providerData: [],
+        providerId: 'password',
+        tenantId: null,
+        delete: async () => {},
+        getIdToken: async () => 'mock-id-token',
+        getIdTokenResult: async () => ({
+          token: 'mock-id-token',
+          expirationTime: '',
+          authTime: '',
+          issuedAtTime: '',
+          signInProvider: null,
+          signInSecondFactor: null,
+          claims: {},
+        }),
+        reload: async () => {},
+        toJSON: () => ({}),
+      };
+      setUser(mockUser);
+      return Promise.resolve();
+    }
+    // In production, use the real Firebase login.
     return signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = () => {
+    // Also clear the mock user on logout
+    if (process.env.NODE_ENV !== 'production') {
+        setUser(null);
+    }
     return signOut(auth);
   };
   
