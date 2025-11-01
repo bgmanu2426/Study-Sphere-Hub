@@ -44,7 +44,7 @@ export async function getChatbotResponse(
 }
 
 const UploadResourceOutputSchema = z.object({
-  fileUrl: z.string().describe('The public URL of the file stored in AWS S3.'),
+  fileUrl: z.string().optional(),
   error: z.string().optional(),
 });
 
@@ -54,28 +54,34 @@ type UploadResourceOutput = z.infer<typeof UploadResourceOutputSchema>;
  * Handles the file upload to AWS S3. This is a server action.
  */
 export async function uploadResource(formData: FormData): Promise<UploadResourceOutput> {
-  const scheme = formData.get('scheme') as string;
-  const branch = formData.get('branch') as string;
-  const semester = formData.get('semester') as string;
-  const subject = formData.get('subject') as string;
-  const resourceType = formData.get('resourceType') as 'Notes' | 'Question Paper';
-  const module = formData.get('module') as string | undefined;
-  const file = formData.get('file') as File;
-
-  if (!file || file.size === 0) {
-    return { error: "File is required." };
-  }
-
-  // Determine the folder path in S3
-  const path = ['VTU Assistant', scheme, branch, semester, subject];
-  
-  if (resourceType === 'Notes' && module) {
-    path.push('notes', module);
-  } else if (resourceType === 'Question Paper') {
-    path.push('question-papers');
-  }
-
   try {
+    const scheme = formData.get('scheme') as string;
+    const branch = formData.get('branch') as string;
+    const semester = formData.get('semester') as string;
+    const subject = formData.get('subject') as string;
+    const resourceType = formData.get('resourceType') as 'Notes' | 'Question Paper';
+    const module = formData.get('module') as string | null;
+    const file = formData.get('file') as File;
+
+    if (!file || file.size === 0) {
+      return { error: 'File is required.' };
+    }
+    if (!scheme || !branch || !semester || !subject || !resourceType) {
+        return { error: 'Missing required form fields.' };
+    }
+
+
+    // Determine the folder path in S3
+    const path = ['VTU Assistant', scheme, branch, semester, subject];
+    
+    if (resourceType === 'Notes' && module) {
+      path.push('notes', module);
+    } else if (resourceType === 'Question Paper') {
+      path.push('question-papers');
+    } else if (resourceType === 'Notes' && !module) {
+        return { error: 'Module is required for Notes.'};
+    }
+
     // Get file content as Buffer
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
