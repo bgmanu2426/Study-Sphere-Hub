@@ -37,9 +37,9 @@ export async function GET(request: Request) {
         return NextResponse.json([]);
     }
 
-    // Correctly handle 1st year data, which is all static and under the '1' semester key
+    // Correctly handle 1st year data, which is all static
     if (year === '1') {
-        const firstYearSubjects = branchData['1' as keyof typeof branchData] || [];
+        const firstYearSubjects = branchData[semester as keyof typeof branchData] || [];
         return NextResponse.json(firstYearSubjects);
     }
       
