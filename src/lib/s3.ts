@@ -1,7 +1,8 @@
 
 'use server';
 
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'eu-north-1',
@@ -40,6 +41,7 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     Key: key,
     Body: fileBuffer,
     ContentType: mimeType,
+    ACL: 'public-read',
   });
 
   try {
@@ -56,40 +58,47 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
 }
 
 /**
- * Lists files from a specified folder path in AWS S3.
+ * Lists files from a specified folder path in AWS S3 and generates pre-signed URLs.
  * @param path The folder path as a single string, e.g., "VTU Assistant/2022/cse/3/22CS32".
- * @returns An array of file objects with name and url.
+ * @returns An array of file objects with name and a temporary, secure pre-signed url.
  */
 export async function getFilesFromS3(path: string) {
   if (!BUCKET_NAME) {
     throw new Error('S3 bucket name is not configured.');
   }
 
-  const command = new ListObjectsV2Command({
+  const listCommand = new ListObjectsV2Command({
     Bucket: BUCKET_NAME,
     Prefix: path.endsWith('/') ? path : path + '/',
   });
 
   try {
-    const { Contents } = await s3Client.send(command);
+    const { Contents } = await s3Client.send(listCommand);
     if (!Contents) {
       return [];
     }
-    const region = await s3Client.config.region();
-    if (!region) {
-      throw new Error('AWS region is not configured or could not be determined.');
-    }
-    return Contents.map(file => {
-        const fileName = file.Key!.split('/').pop()!;
-        const url = getPublicUrl(BUCKET_NAME, file.Key!, region);
-        return {
-            name: fileName,
-            url: url,
-            summary: undefined
-        };
-    }).filter(file => !!file.name); // Filter out folder objects
+
+    const files = Contents.filter(file => file.Key && !file.Key.endsWith('/'));
+    
+    const signedUrls = await Promise.all(
+        files.map(async (file) => {
+            const getObjectCommand = new GetObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: file.Key!,
+            });
+            const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 3600 }); // URL expires in 1 hour
+            return {
+                name: file.Key!.split('/').pop()!,
+                url: url,
+                summary: undefined
+            };
+        })
+    );
+
+    return signedUrls;
+
   } catch (error) {
-    console.error(`Error listing files from S3 path "${path}":`, error);
+    console.error(`Error listing files or signing URLs from S3 path "${path}":`, error);
     return [];
   }
 }

@@ -28,11 +28,8 @@ export async function GET(request: Request) {
     }
       
     const staticSubjectsForSemester: Subject[] = branchData[semester as keyof typeof branchData] || [];
-    if (staticSubjectsForSemester.length === 0) {
-        return NextResponse.json([]);
-    }
 
-    // 2. Create a deep copy to avoid modifying the original vtu-data
+    // Create a deep copy to avoid modifying the original vtu-data
     const subjectsMap = new Map<string, Subject>();
     staticSubjectsForSemester.forEach(staticSub => {
       subjectsMap.set(staticSub.id, JSON.parse(JSON.stringify(staticSub)));
