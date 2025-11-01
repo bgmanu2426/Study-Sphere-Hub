@@ -351,7 +351,7 @@ export function UploadForm() {
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select module" />
-                      </T riggelectTrigger>
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {[1,2,3,4,5].map(m => (
