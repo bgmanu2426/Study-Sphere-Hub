@@ -4,6 +4,8 @@
 import { uploadFileToS3 } from '@/lib/s3';
 import { z } from 'zod';
 import { vtuChatbot } from '@/ai/flows/vtu-chatbot';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 
 const VTU_RESOURCES_TEXT = `
@@ -65,11 +67,8 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
     const file = formData.get('file') as File;
 
     // --- Robust Validation ---
-    if (!scheme || !branch || !semester || !subject || !resourceType) {
-        return { error: 'Missing required form fields.' };
-    }
-     if (!file || file.size === 0) {
-      return { error: 'File is required.' };
+    if (!scheme || !branch || !semester || !subject || !resourceType || !file || file.size === 0) {
+      return { error: 'Missing required form fields.' };
     }
     if (resourceType === 'Notes' && !module) {
         return { error: 'Module is required for Notes.'};
@@ -79,9 +78,8 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
     // Determine the folder path in S3
     const path = ['VTU Assistant', scheme, branch, semester, subject];
     
-    if (resourceType === 'Notes') {
-      // The module is guaranteed to exist here because of the validation above
-      path.push('notes', module!); 
+    if (resourceType === 'Notes' && module) {
+      path.push('notes', module); 
     } else if (resourceType === 'Question Paper') {
       path.push('question-papers');
     }
@@ -91,6 +89,9 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
 
     // Upload the file to S3
     const publicUrl = await uploadFileToS3(fileBuffer, file.name, file.type, path);
+
+    // Revalidate the path to clear the cache for the resource API
+    revalidatePath('/api/resources');
 
     // Return the URL
     return {

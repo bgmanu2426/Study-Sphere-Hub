@@ -30,6 +30,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { uploadResource } from '@/lib/actions';
+import { useRouter } from 'next/navigation';
 
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -60,6 +61,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function UploadForm() {
   const { user } = useAuth();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'complete' | 'error'>('pending');
@@ -147,12 +149,11 @@ export function UploadForm() {
             setUploadStatus('complete');
             toast({
                 title: 'Upload Successful!',
-                description: `File has been uploaded to AWS S3.`,
+                description: `File uploaded. You will now be redirected.`,
             });
             reset();
             setTimeout(() => {
-              setUploadStatus('pending');
-              setUploadProgress(0);
+              router.push('/');
             }, 2000);
         } else {
             throw new Error(result.error || "An unknown error occurred during upload.");
@@ -176,7 +177,7 @@ export function UploadForm() {
       statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Uploading to S3...</p>;
       break;
     case 'complete':
-      statusIndicatorContent = <div className="flex items-center text-sm text-green-600 mt-1"><CheckCircle2 className="mr-1 h-4 w-4" />Upload complete!</div>;
+      statusIndicatorContent = <div className="flex items-center text-sm text-green-600 mt-1"><CheckCircle2 className="mr-1 h-4 w-4" />Upload complete! Redirecting...</div>;
       break;
     case 'error':
       statusIndicatorContent = <div className="flex items-center text-sm text-destructive mt-1"><XCircle className="mr-1 h-4 w-4" />Upload failed.</div>;
@@ -350,7 +351,7 @@ export function UploadForm() {
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select module" />
-                      </SelectTrigger>
+                      </T riggelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {[1,2,3,4,5].map(m => (
