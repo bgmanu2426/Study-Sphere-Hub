@@ -57,17 +57,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function fileToDataUri(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            resolve(reader.result as string);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 
 export function UploadForm() {
   const { user } = useAuth();
@@ -90,12 +79,13 @@ export function UploadForm() {
     },
   });
 
-  const { watch, reset, resetField } = form;
+  const { watch, reset, resetField, register } = form;
   const watchedScheme = watch('scheme');
   const watchedBranch = watch('branch');
   const watchedSemester = watch('semester');
   const selectedYear = watch('year');
   const resourceType = watch('resourceType');
+  const fileRef = register('file');
 
   useEffect(() => {
     if (watchedScheme && watchedBranch && watchedSemester) {
@@ -140,28 +130,24 @@ export function UploadForm() {
     setUploadStatus('uploading');
     setUploadProgress(50);
 
-    try {
-        const file = values.file[0] as File;
-        const fileDataUri = await fileToDataUri(file);
-        
-        const result = await uploadResource({
-            scheme: values.scheme,
-            branch: values.branch,
-            semester: values.semester,
-            subject: values.subject,
-            fileName: file.name,
-            fileDataUri: fileDataUri,
-            resourceType: values.resourceType,
-            module: values.resourceType === 'Notes' ? values.module : undefined,
-        });
+    const formData = new FormData();
+    Object.entries(values).forEach(([key, value]) => {
+      if (key === 'file') {
+        formData.append(key, value[0]);
+      } else if (value) {
+        formData.append(key, value as string);
+      }
+    });
 
+    try {
+        const result = await uploadResource(formData);
 
         if (result.fileUrl) {
             setUploadProgress(100);
             setUploadStatus('complete');
             toast({
                 title: 'Upload Successful!',
-                description: `"${file.name}" has been uploaded to AWS S3.`,
+                description: `File has been uploaded to AWS S3.`,
             });
             reset();
             setTimeout(() => {
@@ -169,7 +155,7 @@ export function UploadForm() {
               setUploadProgress(0);
             }, 2000);
         } else {
-            throw new Error("An unknown error occurred during upload.");
+            throw new Error(result.error || "An unknown error occurred during upload.");
         }
     } catch (error: any) {
         setUploadStatus('error');
@@ -385,7 +371,7 @@ export function UploadForm() {
             <FormItem>
               <FormLabel>File</FormLabel>
               <FormControl>
-                <Input type="file" onChange={(e) => field.onChange(e.target.files)} disabled={isSubmitting} />
+                <Input type="file" {...fileRef} disabled={isSubmitting} />
               </FormControl>
               <FormDescription>Select the PDF or document you want to upload (Max 10MB).</FormDescription>
               <FormMessage />
