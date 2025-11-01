@@ -1,0 +1,12 @@
+diff --git a/node_modules/pdf-parse/lib/pdf-parse.js b/node_modules/pdf-parse/lib/pdf-parse.js
+index 7378c85..630133c 100644
+--- a/node_modules/pdf-parse/lib/pdf-parse.js
++++ b/node_modules/pdf-parse/lib/pdf-parse.js
+@@ -50,7 +50,6 @@
+ 		let { password, pagerender, max, version } = options;
+ 		const PDFJS = require('./pdf.js');
+ 		if (typeof PDFJS.getDocument === 'function') {
+-			PDFJS.getDocument( new Uint8Array(fs.readFileSync('./test/data/05-versions-space.pdf')) );
+ 			let doc = PDFJS.getDocument({
+ 				data: dataBuffer,
+ 				password,

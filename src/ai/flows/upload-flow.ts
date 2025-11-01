@@ -12,7 +12,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { uploadFileToS3 } from '@/lib/s3';
 import { summarizeResource } from './resource-summarization';
-import * as pdfParse from 'pdf-parse';
+import pdf from 'pdf-parse';
 
 export const UploadResourceInputSchema = z.object({
   scheme: z.string().describe('The academic scheme (e.g., 2022).'),
@@ -74,7 +74,7 @@ const uploadResourceFlow = ai.defineFlow(
     // If it's a PDF, try to generate a summary
     if (mimeType === 'application/pdf') {
       try {
-        const pdfData = await pdfParse(fileBuffer);
+        const pdfData = await pdf(fileBuffer);
         if (pdfData.text) {
           const summaryResponse = await summarizeResource({ resourceText: pdfData.text.substring(0, 8000) });
           summary = summaryResponse.summary;
