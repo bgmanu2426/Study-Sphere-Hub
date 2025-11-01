@@ -75,7 +75,7 @@ export async function getFilesFromS3(path: string) {
         return {
             name: fileName,
             url: url,
-            summary: 'User uploaded content from AWS S3.'
+            summary: undefined
         };
     }).filter(file => !!file.name); // Filter out folder objects
   } catch (error) {

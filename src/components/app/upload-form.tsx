@@ -72,7 +72,7 @@ export function UploadForm() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'summarizing' | 'complete' | 'error'>('pending');
+  const [uploadStatus, setUploadStatus] = useState<'pending' | 'uploading' | 'complete' | 'error'>('pending');
   const { toast } = useToast();
   const [availableSubjects, setAvailableSubjects] = useState<{ id: string, name: string }[]>([]);
 
@@ -137,15 +137,12 @@ export function UploadForm() {
     }
     setIsSubmitting(true);
     setUploadStatus('uploading');
-    setUploadProgress(30);
+    setUploadProgress(50);
 
     try {
         const file = values.file[0] as File;
         const fileDataUri = await fileToDataUri(file);
         
-        setUploadProgress(60);
-        setUploadStatus('summarizing');
-
         const result = await uploadResource({
             scheme: values.scheme,
             branch: values.branch,
@@ -190,9 +187,6 @@ export function UploadForm() {
   switch (uploadStatus) {
     case 'uploading':
       statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Uploading to S3...</p>;
-      break;
-    case 'summarizing':
-      statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Analyzing and summarizing file...</p>;
       break;
     case 'complete':
       statusIndicatorContent = <div className="flex items-center text-sm text-green-600 mt-1"><CheckCircle2 className="mr-1 h-4 w-4" />Upload complete!</div>;
@@ -350,7 +344,7 @@ export function UploadForm() {
                       <SelectContent>
                         <SelectItem value="Notes">Notes</SelectItem>
                         <SelectItem value="Question Paper">Question Paper</SelectItem>
-                      </SelectContent>
+                      </Content>
                     </Select>
                     <FormMessage />
                   </FormItem>

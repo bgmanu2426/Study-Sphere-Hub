@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview An AI flow to handle resource uploads to AWS S3 and summarize them.
+ * @fileOverview An AI flow to handle resource uploads to AWS S3.
  *
- * - uploadResource - Handles the file upload, summarization, and S3 storage.
+ * - uploadResource - Handles the file upload and S3 storage.
  * - UploadResourceInput - The input type for the uploadResource function.
  * - UploadResourceOutput - The return type for the uploadResource function.
  */
@@ -11,8 +11,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { uploadFileToS3 } from '@/lib/s3';
-import { summarizeResource } from './resource-summarization';
-import pdf from 'pdf-parse';
 
 export const UploadResourceInputSchema = z.object({
   scheme: z.string().describe('The academic scheme (e.g., 2022).'),
@@ -69,24 +67,10 @@ const uploadResourceFlow = ai.defineFlow(
     // Upload the file to S3
     const publicUrl = await uploadFileToS3(fileBuffer, fileName, mimeType, path);
 
-    let summary: string | undefined;
-
-    // If it's a PDF, try to generate a summary
-    if (mimeType === 'application/pdf') {
-      try {
-        const pdfData = await pdf(fileBuffer);
-        if (pdfData.text) {
-          const summaryResponse = await summarizeResource({ resourceText: pdfData.text.substring(0, 8000) });
-          summary = summaryResponse.summary;
-        }
-      } catch (e) {
-        console.error("Failed to parse PDF or generate summary:", e);
-      }
-    }
-
+    // Return the URL without a summary
     return {
       fileUrl: publicUrl,
-      summary: summary,
+      summary: undefined,
     };
   }
 );
