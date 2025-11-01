@@ -1,3 +1,4 @@
+
 'use server';
 
 import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
@@ -36,7 +37,6 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     Key: key,
     Body: fileBuffer,
     ContentType: mimeType,
-    ACL: 'public-read', // Make the file publicly accessible
   });
 
   try {
