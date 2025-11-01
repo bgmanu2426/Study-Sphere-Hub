@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -28,7 +29,7 @@ import { Loader2, Upload, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { uploadResource } from '@/ai/flows/upload-flow';
+import { uploadResource } from '@/lib/actions';
 
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -106,7 +107,7 @@ export function UploadForm() {
       setAvailableSubjects([]);
     }
     resetField('subject');
-  }, [watchedScheme, watchedBranch, watchedSemester]);
+  }, [watchedScheme, watchedBranch, watchedSemester, resetField]);
   
   const availableSemesters = useMemo(() => {
     if (!selectedYear) return [];
