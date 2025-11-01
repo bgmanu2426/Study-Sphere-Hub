@@ -26,12 +26,6 @@ export async function GET(request: Request) {
     if (!branchData) {
         return NextResponse.json([]);
     }
-
-    // Correctly handle 1st year data, which is all static
-    if (year === '1') {
-        const firstYearSubjects = branchData[semester as keyof typeof branchData] || [];
-        return NextResponse.json(firstYearSubjects);
-    }
       
     const staticSubjectsForSemester: Subject[] = branchData[semester as keyof typeof branchData] || [];
     if (staticSubjectsForSemester.length === 0) {
