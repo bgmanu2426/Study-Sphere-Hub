@@ -43,7 +43,7 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     await s3Client.send(command);
     return getPublicUrl(BUCKET_NAME, key, process.env.AWS_REGION!);
   } catch (error) {
-    console.error(`Error uploading file "${fileName}" to S3:`, error);
+    console.error(`Error uploading file "${fileName}" to S3 with key "${key}":`, error);
     throw new Error('File upload to AWS S3 failed.');
   }
 }
@@ -60,7 +60,7 @@ export async function getFilesFromS3(path: string) {
 
   const command = new ListObjectsV2Command({
     Bucket: BUCKET_NAME,
-    Prefix: path + '/',
+    Prefix: path.endsWith('/') ? path : path + '/',
   });
 
   try {
