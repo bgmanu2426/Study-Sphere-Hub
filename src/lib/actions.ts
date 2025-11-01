@@ -65,7 +65,7 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
     const resourceType = formData.get('resourceType') as 'Notes' | 'Question Paper';
     const module = formData.get('module') as string | null;
     const file = formData.get('file') as File;
-
+    
     if (!scheme || !branch || !semester || !subject || !resourceType || !file || file.size === 0) {
       return { error: 'Missing or invalid required form fields.' };
     }
@@ -75,8 +75,8 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
 
     const path = ['VTU Assistant', scheme, branch, semester, subject];
     
-    if (resourceType === 'Notes') {
-      path.push('notes', module!); 
+    if (resourceType === 'Notes' && module) {
+      path.push('notes', module); 
     } else if (resourceType === 'Question Paper') {
       path.push('question-papers');
     }

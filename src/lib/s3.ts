@@ -4,7 +4,7 @@
 import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
+  region: process.env.AWS_REGION!,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -14,7 +14,8 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 function getPublicUrl(bucket: string, key: string) {
-    return `https://${bucket}.s3.amazonaws.com/${key}`;
+    // Standard public URL format
+    return `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 }
 
 /**
@@ -44,8 +45,7 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     await s3Client.send(command);
     return getPublicUrl(BUCKET_NAME, key);
   } catch (error: any) {
-    console.error(`Error uploading file "${fileName}" to S3. AWS-SDK-S3 Error:`, error.message);
-    console.error('Full Error Object:', JSON.stringify(error, null, 2));
+    console.error(`Error uploading file "${fileName}" to S3. AWS-SDK-S3 Error:`, error);
     // Throw a new, simple Error object with just the message string.
     throw new Error(`File upload to AWS S3 failed. Reason: ${error.message}`);
   }
