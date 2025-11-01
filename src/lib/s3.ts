@@ -4,7 +4,7 @@
 import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const s3Client = new S3Client({
-  region: 'eu-north-1',
+  region: process.env.AWS_REGION || 'eu-north-1',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -40,7 +40,6 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     Key: key,
     Body: fileBuffer,
     ContentType: mimeType,
-    ACL: 'public-read',
   });
 
   try {
