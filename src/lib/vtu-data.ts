@@ -1,4 +1,5 @@
 
+
 // Data from https://vtucircle.com/ and https://vtu.ac.in/
 export const vtuResources = {
   '2022': {
@@ -11,14 +12,44 @@ export const vtuResources = {
           questionPapers: [],
         },
         {
-          id: 'BMATS201',
-          name: 'Mathematics-II for CSE Stream',
+          id: 'BPHYS102',
+          name: 'Applied Physics for CSE stream',
           notes: {},
           questionPapers: [],
         },
         {
-          id: 'BPHYS102',
-          name: 'Applied Physics for CSE stream',
+          id: 'BPOPS103',
+          name: 'Principles of Programming Using C',
+          notes: {},
+          questionPapers: [],
+        },
+        {
+          id: 'BESCK104C',
+          name: 'Introduction to Electronics Communication',
+          notes: {},
+          questionPapers: [],
+        },
+        {
+          id: 'BPLCK105B',
+          name: 'Introduction to Python Programming',
+          notes: {},
+          questionPapers: [],
+        },
+        {
+          id: 'BENGK106',
+          name: 'Communicative English',
+          notes: {},
+          questionPapers: [],
+        },
+        {
+          id: 'BKSKK107',
+          name: 'Samskrutika Kannada',
+          notes: {},
+          questionPapers: [],
+        },
+        {
+          id: 'BMATS201',
+          name: 'Mathematics-II for CSE Stream',
           notes: {},
           questionPapers: [],
         },
@@ -29,26 +60,8 @@ export const vtuResources = {
           questionPapers: [],
         },
         {
-            id: 'BPOPS103',
-            name: 'Principles of Programming Using C',
-            notes: {},
-            questionPapers: [],
-        },
-        {
             id: 'BCEDK203',
             name: 'Computer-Aided Engineering Drawing',
-            notes: {},
-            questionPapers: [],
-        },
-        {
-            id: 'BPLCK105B',
-            name: 'Introduction to Python Programming',
-            notes: {},
-            questionPapers: [],
-        },
-        {
-            id: 'BPLCK105C',
-            name: 'Basics of JAVA programming',
             notes: {},
             questionPapers: [],
         },
@@ -59,8 +72,8 @@ export const vtuResources = {
             questionPapers: [],
         },
         {
-            id: 'BESCK104C',
-            name: 'Introduction to Electronics Communication',
+            id: 'BPLCK105C',
+            name: 'Basics of JAVA programming',
             notes: {},
             questionPapers: [],
         },
@@ -77,20 +90,8 @@ export const vtuResources = {
             questionPapers: [],
         },
         {
-            id: 'BENGK106',
-            name: 'Communicative English',
-            notes: {},
-            questionPapers: [],
-        },
-        {
             id: 'BPWSK106',
             name: 'Professional Writing Skills in English',
-            notes: {},
-            questionPapers: [],
-        },
-        {
-            id: 'BKSKK107',
-            name: 'Samskrutika Kannada',
             notes: {},
             questionPapers: [],
         },
@@ -274,20 +275,8 @@ export const vtuResources = {
               questionPapers: [],
             },
             {
-              id: 'BMATS201',
-              name: 'Mathematics-II for CSE Stream',
-              notes: {},
-              questionPapers: [],
-            },
-            {
               id: 'BPHYS102',
               name: 'Applied Physics for CSE stream',
-              notes: {},
-              questionPapers: [],
-            },
-            {
-              id: 'BCHES202',
-              name: 'Applied Chemistry for CSE Stream',
               notes: {},
               questionPapers: [],
             },
@@ -296,6 +285,18 @@ export const vtuResources = {
                 name: 'Principles of Programming Using C',
                 notes: {},
                 questionPapers: [],
+            },
+             {
+              id: 'BMATS201',
+              name: 'Mathematics-II for CSE Stream',
+              notes: {},
+              questionPapers: [],
+            },
+            {
+              id: 'BCHES202',
+              name: 'Applied Chemistry for CSE Stream',
+              notes: {},
+              questionPapers: [],
             },
             {
                 id: 'BCEDK203',
