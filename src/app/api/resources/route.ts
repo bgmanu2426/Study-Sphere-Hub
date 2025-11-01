@@ -58,6 +58,8 @@ export async function GET(request: Request) {
                 if (!subject.notes) {
                     subject.notes = {};
                 }
+                // Since multiple files can exist, we'll just take the first one for this example.
+                // A more robust solution might handle multiple files per module.
                 subject.notes[moduleKey] = {
                     name: notesFiles[0].name,
                     url: notesFiles[0].url,
@@ -78,7 +80,12 @@ export async function GET(request: Request) {
              if (!subject.questionPapers) {
                 subject.questionPapers = [];
             }
-            subject.questionPapers.push(...driveQps);
+            // Add new files, avoiding duplicates
+            driveQps.forEach(newQp => {
+              if (!subject.questionPapers.some(existingQp => existingQp.url === newQp.url)) {
+                subject.questionPapers.push(newQp);
+              }
+            });
         }
     }
 
