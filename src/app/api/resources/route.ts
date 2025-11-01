@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getFilesFromS3 } from '@/lib/s3';
 import { vtuResources } from '@/lib/vtu-data';
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
     // 1. Get static resources for the selected criteria
     const staticSubjectsForSemester: Subject[] = vtuResources[scheme as keyof typeof vtuResources]?.[branch as keyof typeof vtuResources]?.[semester as keyof typeof vtuResources] || [];
 
-    // If it's the first year, return the static data directly.
+    // If it's the first year, return the static data directly as it has no dynamic content from S3.
     if (year === '1') {
         return NextResponse.json(staticSubjectsForSemester);
     }
