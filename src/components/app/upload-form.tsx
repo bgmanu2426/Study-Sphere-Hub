@@ -106,7 +106,7 @@ export function UploadForm() {
       setAvailableSubjects([]);
     }
     resetField('subject');
-  }, [watchedScheme, watchedBranch, watchedSemester, resetField]);
+  }, [watchedScheme, watchedBranch, watchedSemester]);
   
   const availableSemesters = useMemo(() => {
     if (!selectedYear) return [];
@@ -158,12 +158,12 @@ export function UploadForm() {
         });
 
 
-        if (result.fileId) {
+        if (result.fileUrl) {
             setUploadProgress(100);
             setUploadStatus('complete');
             toast({
                 title: 'Upload Successful!',
-                description: `"${file.name}" has been uploaded to Google Drive.`,
+                description: `"${file.name}" has been uploaded to AWS S3.`,
             });
             reset();
             setTimeout(() => {
@@ -189,7 +189,7 @@ export function UploadForm() {
   let statusIndicatorContent = null;
   switch (uploadStatus) {
     case 'uploading':
-      statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Uploading to Drive...</p>;
+      statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Uploading to S3...</p>;
       break;
     case 'summarizing':
       statusIndicatorContent = <p className="text-sm text-muted-foreground mt-1">Analyzing and summarizing file...</p>;

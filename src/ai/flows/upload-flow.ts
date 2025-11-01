@@ -1,16 +1,16 @@
 'use server';
 
 /**
- * @fileOverview An AI flow to handle resource uploads to Google Drive and summarize them.
+ * @fileOverview An AI flow to handle resource uploads to AWS S3 and summarize them.
  *
- * - uploadResource - Handles the file upload, summarization, and Drive storage.
+ * - uploadResource - Handles the file upload, summarization, and S3 storage.
  * - UploadResourceInput - The input type for the uploadResource function.
  * - UploadResourceOutput - The return type for the uploadResource function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { uploadFileToDrive } from '@/lib/drive';
+import { uploadFileToS3 } from '@/lib/s3';
 import { summarizeResource } from './resource-summarization';
 import * as pdfParse from 'pdf-parse';
 
@@ -32,9 +32,8 @@ export const UploadResourceInputSchema = z.object({
 export type UploadResourceInput = z.infer<typeof UploadResourceInputSchema>;
 
 export const UploadResourceOutputSchema = z.object({
-  fileId: z.string().describe('The ID of the file created in Google Drive.'),
+  fileUrl: z.string().describe('The public URL of the file stored in AWS S3.'),
   summary: z.string().optional().describe('A summary of the file content if it was a PDF.'),
-  webViewLink: z.string().describe('A link to view the file in the browser.'),
 });
 
 export type UploadResourceOutput = z.infer<typeof UploadResourceOutputSchema>;
@@ -54,10 +53,9 @@ const uploadResourceFlow = ai.defineFlow(
   async (input) => {
     const { fileDataUri, scheme, branch, semester, subject, fileName, resourceType, module } = input;
     
-    // Determine the folder path in Google Drive
+    // Determine the folder path in S3
     const path = ['VTU Assistant', scheme, branch, semester, subject];
     
-    // For 'Notes', add a 'notes' subfolder and the specific module subfolder
     if (resourceType === 'Notes' && module) {
       path.push('notes', module);
     } else if (resourceType === 'Question Paper') {
@@ -68,11 +66,8 @@ const uploadResourceFlow = ai.defineFlow(
     const fileBuffer = Buffer.from(fileDataUri.substring(fileDataUri.indexOf(',') + 1), 'base64');
     const mimeType = fileDataUri.substring(fileDataUri.indexOf(':') + 1, fileDataUri.indexOf(';'));
 
-    // Upload the file to Google Drive
-    const driveResponse = await uploadFileToDrive(fileBuffer, fileName, mimeType, path);
-    if (!driveResponse) {
-      throw new Error('Failed to upload file to Google Drive.');
-    }
+    // Upload the file to S3
+    const publicUrl = await uploadFileToS3(fileBuffer, fileName, mimeType, path);
 
     let summary: string | undefined;
 
@@ -86,14 +81,12 @@ const uploadResourceFlow = ai.defineFlow(
         }
       } catch (e) {
         console.error("Failed to parse PDF or generate summary:", e);
-        // We don't throw an error here, just proceed without a summary
       }
     }
 
     return {
-      fileId: driveResponse.id,
+      fileUrl: publicUrl,
       summary: summary,
-      webViewLink: driveResponse.webViewLink,
     };
   }
 );

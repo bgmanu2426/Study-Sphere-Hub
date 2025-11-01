@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getFilesFromDrive } from '@/lib/drive';
+import { getFilesFromS3 } from '@/lib/s3';
 import { vtuResources } from '@/lib/vtu-data';
 import { Subject, ResourceFile } from '@/lib/data';
 import { adminAuth } from '@/lib/firebase-admin';
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     // 1. Get static resources for the selected criteria
     const staticSubjectsForSemester: Subject[] = vtuResources[scheme as keyof typeof vtuResources]?.[branch as keyof typeof vtuResources]?.[semester as keyof typeof vtuResources] || [];
 
-    // If it's the first year, the data is structured differently and we don't fetch from Drive for now.
+    // If it's the first year, return the static data directly.
     if (year === '1') {
         return NextResponse.json(staticSubjectsForSemester);
     }
@@ -39,34 +39,32 @@ export async function GET(request: Request) {
       subjectsMap.set(staticSub.id, JSON.parse(JSON.stringify(staticSub)));
     });
 
-    // 3. Fetch dynamic resources from Google Drive for each subject
+    // 3. Fetch dynamic resources from AWS S3 for each subject
     for (const subject of subjectsMap.values()) {
-        const drivePath = ['VTU Assistant', scheme, branch, semester, subject.id];
+        const s3Path = ['VTU Assistant', scheme, branch, semester, subject.id];
         
         // Fetch notes (module-wise)
         for (let i = 1; i <= 5; i++) {
             const moduleKey = `module${i}`;
-            const notesPath = [...drivePath, 'notes', moduleKey];
-            const notesFiles = await getFilesFromDrive(notesPath.join('/'));
+            const notesPath = [...s3Path, 'notes', moduleKey];
+            const notesFiles = await getFilesFromS3(notesPath.join('/'));
             if (notesFiles.length > 0) {
-                // To keep it simple, we'll just take the first file found for a module.
-                // You could extend this to handle multiple files.
                 subject.notes[moduleKey] = {
                     name: notesFiles[0].name,
-                    url: notesFiles[0].webViewLink,
-                    summary: 'User uploaded content from Google Drive.', // Placeholder summary
+                    url: notesFiles[0].url,
+                    summary: notesFiles[0].summary,
                 };
             }
         }
 
         // Fetch question papers
-        const qpPath = [...drivePath, 'question-papers'];
-        const qpFiles = await getFilesFromDrive(qpPath.join('/'));
+        const qpPath = [...s3Path, 'question-papers'];
+        const qpFiles = await getFilesFromS3(qpPath.join('/'));
         if(qpFiles.length > 0) {
             const driveQps: ResourceFile[] = qpFiles.map(file => ({
                 name: file.name,
-                url: file.webViewLink,
-                summary: 'User uploaded content from Google Drive.',
+                url: file.url,
+                summary: file.summary,
             }));
             subject.questionPapers.push(...driveQps);
         }
@@ -81,6 +79,6 @@ export async function GET(request: Request) {
     if (error.code === 'auth/id-token-expired') {
         return NextResponse.json({ error: 'Authentication token has expired. Please log in again.' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'Failed to retrieve resources from Google Drive' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to retrieve resources from S3' }, { status: 500 });
   }
 }

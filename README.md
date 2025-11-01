@@ -7,7 +7,7 @@ Welcome to VTU Assistant, your one-stop solution for accessing academic resource
 
 -   **User Authentication**: Secure login and signup functionality for personalized access.
 -   **Dynamic Resource Finder**: A powerful search interface to filter resources by Scheme, Branch, Year, and Semester.
--   **Resource Uploading**: An intuitive form for users to contribute their own notes and question papers, which are stored securely in Cloudinary.
+-   **Resource Uploading**: An intuitive form for users to contribute their own notes and question papers, which are stored securely in AWS S3.
 -   **Dynamic Resource Display**: Fetches and displays available resources, including user-uploaded content and static links, in a clean, card-based layout.
 -   **AI-Powered Chatbot**: A Genkit-based AI assistant to help with queries related to VTU subjects and syllabus.
 -   **AI-Powered Summarization**: Uploaded PDF documents are automatically summarized using an AI flow to provide quick insights.
@@ -20,7 +20,7 @@ Welcome to VTU Assistant, your one-stop solution for accessing academic resource
 -   **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
 -   **AI/Generative**: [Genkit](https://firebase.google.com/docs/genkit)
 -   **Authentication**: [Firebase Authentication](https://firebase.google.com/docs/auth)
--   **File Storage**: [Cloudinary](https://cloudinary.com/)
+-   **File Storage**: [AWS S3](https://aws.amazon.com/s3/)
 -   **Form Management**: [React Hook Form](https://react-hook-form.com/) with [Zod](https://zod.dev/) for validation
 
 ## Getting Started
@@ -31,6 +31,7 @@ Follow these instructions to get the project up and running on your local machin
 
 -   [Node.js](https://nodejs.org/) (v18 or later)
 -   `npm` or `yarn` package manager
+-   An AWS Account
 
 ### Installation
 
@@ -47,10 +48,10 @@ Follow these instructions to get the project up and running on your local machin
 
 ### Environment Setup
 
-This project requires environment variables to connect to Firebase and Cloudinary.
+This project requires environment variables to connect to Firebase and AWS S3.
 
 1.  **Create a `.env` file**: Create a `.env` file in the root of the project.
-2.  **Add Configuration**: Copy and paste the following configuration into the `.env` file. You will need to replace the placeholder values with your actual credentials from Firebase and Cloudinary.
+2.  **Add Configuration**: Copy and paste the following configuration into the `.env` file. You will need to replace the placeholder values with your actual credentials.
 
     ```env
     # Firebase Configuration (for user authentication)
@@ -61,12 +62,11 @@ This project requires environment variables to connect to Firebase and Cloudinar
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="..."
     NEXT_PUBLIC_FIREBASE_APP_ID="1:..."
 
-    # Cloudinary Configuration (for file storage)
-    # Get these from your Cloudinary dashboard
-    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your-cloud-name"
-    NEXT_PUBLIC_CLOUDINARY_API_KEY="your-api-key"
-    SERVER_CLOUDINARY_API_SECRET="your-api-secret"
-    NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET="vtu_assistant"
+    # AWS S3 Configuration (for file storage)
+    AWS_ACCESS_KEY_ID="YOUR_AWS_ACCESS_KEY"
+    AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET_KEY"
+    AWS_REGION="your-s3-bucket-region" # e.g., us-east-1
+    S3_BUCKET_NAME="your-s3-bucket-name"
     ```
 
 ### Service Setup
@@ -76,15 +76,14 @@ This project requires environment variables to connect to Firebase and Cloudinar
     -   In the Firebase Console, go to **Authentication** and enable the **Email/Password** sign-in method.
     -   Find your web app configuration keys in the Project Settings and add them to your `.env` file.
 
-2.  **Cloudinary**:
-    -   Go to the [Cloudinary website](https://cloudinary.com/), sign up for an account, and find your **Cloud Name**, **API Key**, and **API Secret** in the dashboard. Add these to your `.env` file.
-    -   In your Cloudinary settings, navigate to **Settings > Upload** and add a new **Upload Preset**.
-    -   Name the preset `vtu_assistant`. This name must match the `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` value in your `.env` file.
-    -   Set the **Signing Mode** to **`Unsigned`**. This is crucial for allowing direct uploads from the browser.
-    -   Set the **Access Control** setting to **`Public`**.
-    -   For **Resource Type**, ensure it is set to **`Auto`**.
-
-    > ⚠️ **Important Note on PDF Uploads**: The application is configured to upload files like PDFs to Cloudinary's `/raw/upload` endpoint. This ensures Cloudinary treats them as raw files and makes them accessible for viewing. If you modify the upload logic, ensure non-image files continue to use this endpoint to avoid "Blocked for delivery" errors.
+2.  **AWS S3**:
+    -   Go to the [AWS Management Console](https://aws.amazon.com/console/) and sign in.
+    -   Navigate to the **S3** service.
+    -   Create a new S3 bucket. Choose a unique name and select the region you want to use.
+    -   Once the bucket is created, navigate to the **Permissions** tab.
+    -   Under **Block public access (bucket settings)**, click **Edit** and uncheck "Block all public access". Save the changes and confirm. This is necessary for the app to make uploaded files publicly readable.
+    -   Create an IAM user with programmatic access to get an Access Key ID and Secret Access Key. Grant this user `AmazonS3FullAccess` permissions (for simplicity) or a more restrictive policy that allows `s3:PutObject`, `s3:PutObjectAcl`, and `s3:ListBucket` actions on your bucket.
+    -   Add your AWS credentials, region, and bucket name to the `.env` file.
 
 ### Running the Development Server
 
@@ -95,17 +94,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) (or the port shown in your terminal, as the default may be different).
-
-### How to Preview Uploaded PDFs
-
-Once a PDF is uploaded correctly, Cloudinary will provide a public URL. To display this in your application, you can use an `iframe`:
-
-```tsx
-<iframe
-  src={pdfUrl}
-  width="100%"
-  height="600px"
-  style={{ border: "none" }}
-></iframe>
-```
-This is handled within the `ResourceDialog` component when you click on a resource link.
