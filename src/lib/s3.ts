@@ -14,8 +14,6 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
 function getPublicUrl(bucket: string, key: string) {
-    // Use the virtual-hosted-style URL format, which is the modern standard.
-    // It does not include the region in the hostname.
     return `https://${bucket}.s3.amazonaws.com/${key}`;
 }
 
@@ -31,8 +29,7 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
   if (!BUCKET_NAME) {
     throw new Error('S3 bucket name is not configured.');
   }
-
-  // Ensure there are no empty segments in the path, which can create invalid keys
+  
   const validPath = path.filter(segment => segment && segment.length > 0);
   const key = [...validPath, fileName].join('/');
   
@@ -47,11 +44,9 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     await s3Client.send(command);
     return getPublicUrl(BUCKET_NAME, key);
   } catch (error: any) {
-    // --- Enhanced Error Logging ---
-    // Log the specific AWS S3 error message for better debugging.
     console.error(`Error uploading file "${fileName}" to S3. AWS-SDK-S3 Error:`, error.message);
     console.error('Full Error Object:', JSON.stringify(error, null, 2));
-    // --- End Enhanced Error Logging ---
+    // Throw a new, simple Error object with just the message string.
     throw new Error(`File upload to AWS S3 failed. Reason: ${error.message}`);
   }
 }

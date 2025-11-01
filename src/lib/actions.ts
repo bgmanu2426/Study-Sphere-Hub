@@ -66,42 +66,32 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
     const module = formData.get('module') as string | null;
     const file = formData.get('file') as File;
 
-    // --- Robust Validation ---
     if (!scheme || !branch || !semester || !subject || !resourceType || !file || file.size === 0) {
       return { error: 'Missing or invalid required form fields.' };
     }
     if (resourceType === 'Notes' && !module) {
         return { error: 'Module is required for Notes.'};
     }
-    // --- End Validation ---
 
-    // Determine the folder path in S3
     const path = ['VTU Assistant', scheme, branch, semester, subject];
     
     if (resourceType === 'Notes') {
       path.push('notes', module!); 
     } else if (resourceType === 'Question Paper') {
       path.push('question-papers');
-    } else {
-        return { error: 'Invalid resource type provided.'}
     }
 
-    // Get file content as Buffer
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-
-    // Upload the file to S3
     const publicUrl = await uploadFileToS3(fileBuffer, file.name, file.type, path);
-
-    // Revalidate the path to clear the cache for the resource API
     revalidatePath('/api/resources');
 
-    // Return the URL
     return {
       fileUrl: publicUrl,
     };
   } catch (error: any) {
     console.error("Upload failed:", error);
-    return { error: error.message || "An unknown error occurred during upload." };
+    // Ensure the returned error message is a simple string.
+    const errorMessage = typeof error.message === 'string' ? error.message : "An unknown error occurred during upload.";
+    return { error: errorMessage };
   }
 }
-
