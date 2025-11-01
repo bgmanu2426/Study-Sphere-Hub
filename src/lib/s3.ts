@@ -41,6 +41,7 @@ export async function uploadFileToS3(fileBuffer: Buffer, fileName: string, mimeT
     Key: key,
     Body: fileBuffer,
     ContentType: mimeType,
+    ACL: 'public-read', // This makes the file publicly accessible
   });
 
   try {
