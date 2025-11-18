@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { GraduationCap, LogOut, User as UserIcon, LogIn, UserPlus } from 'lucide-react';
+import { GraduationCap, LogOut, User as UserIcon, LogIn, UserPlus, Upload } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
+import { ADMIN_EMAIL } from '@/lib/constants';
 
 export function AppHeader() {
   const { user, logout } = useAuth();
@@ -28,6 +29,8 @@ export function AppHeader() {
     return email ? email.substring(0, 2).toUpperCase() : <UserIcon className="h-5 w-5" />;
   };
 
+  const isAdmin = user && user.email === ADMIN_EMAIL;
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 max-w-screen-2xl items-center">
@@ -36,12 +39,15 @@ export function AppHeader() {
           <span className="font-bold sm:inline-block">VTU Assistant</span>
         </Link>
         <nav className="flex flex-1 items-center gap-4 text-sm">
-          <Link
-            href="/upload"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Upload
-          </Link>
+          {isAdmin && (
+             <Link
+                href="/upload"
+                className="text-muted-foreground transition-colors hover:text-foreground flex items-center"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload
+              </Link>
+          )}
         </nav>
         <div className="flex items-center gap-2">
           {user ? (
