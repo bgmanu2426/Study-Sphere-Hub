@@ -42,7 +42,6 @@ export function ResourceCard({ subject, onResourceChange }: ResourceCardProps) {
         isOpen={dialogOpen}
         onOpenChange={setDialogOpen}
         subject={subject}
-        onResourceDeleted={onResourceChange}
       />
     </>
   );
