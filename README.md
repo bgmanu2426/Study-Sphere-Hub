@@ -1,7 +1,7 @@
 
-# VTU Assistant
+# Study Sphere Hub
 
-Welcome to VTU Assistant, your one-stop solution for accessing academic resources for Visvesvaraya Technological University (VTU). This application is designed to help students easily find and share notes and question papers for various courses, schemes, and branches. It also features an AI-powered chatbot to answer questions about VTU.
+Welcome to Study Sphere Hub, your one-stop solution for accessing academic resources for Visvesvaraya Technological University (VTU). This application is designed to help students easily find and share notes and question papers for various courses, schemes, and branches. It also features an AI-powered chatbot to answer questions about VTU.
 
 ## Core Features
 

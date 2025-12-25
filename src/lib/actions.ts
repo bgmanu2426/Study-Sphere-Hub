@@ -1,7 +1,7 @@
 
 'use server';
 
-import { uploadFileToStorage, deleteFileFromStorage, checkForExistingFile } from '@/lib/storage';
+import { uploadFileToStorage, deleteFileFromStorage, checkForExistingFile, getFileContentAsBase64 } from '@/lib/storage';
 import { z } from 'zod';
 import { vtuChatbot } from '@/ai/flows/vtu-chatbot';
 import { revalidatePath } from 'next/cache';
@@ -28,12 +28,31 @@ Students can check their results on the official VTU website.
 
 export async function getChatbotResponse(
   chatHistory: { role: 'user' | 'bot', content: string }[],
-  query: string
+  query: string,
+  pdfContext?: { url: string; name: string }
 ): Promise<{ answer?: string; error?: string }> {
   try {
+    let pdfBase64: string | undefined;
+    let pdfMimeType: string | undefined;
+    
+    // If PDF context is provided, fetch the PDF content
+    if (pdfContext?.url) {
+      try {
+        const pdfData = await getFileContentAsBase64(pdfContext.url);
+        pdfBase64 = pdfData.base64;
+        pdfMimeType = pdfData.mimeType;
+      } catch (error) {
+        console.error('Failed to fetch PDF content:', error);
+        // Continue without PDF context if fetch fails
+      }
+    }
+    
     const response = await vtuChatbot({
       query: query,
-      resources: VTU_RESOURCES_TEXT
+      resources: VTU_RESOURCES_TEXT,
+      pdfBase64,
+      pdfMimeType,
+      pdfName: pdfContext?.name
     });
     if (response && response.answer) {
       return { answer: response.answer };
@@ -84,7 +103,7 @@ export async function uploadResource(formData: FormData): Promise<UploadResource
         return { error: 'Module is required for Notes.'};
     }
 
-    const path = ['VTU Assistant', scheme, branch, semester, subject];
+    const path = ['Study Sphere Hub', scheme, branch, semester, subject];
     if (resourceType === 'Notes' && module) {
       path.push('notes', module); 
     } else if (resourceType === 'Question Paper') {

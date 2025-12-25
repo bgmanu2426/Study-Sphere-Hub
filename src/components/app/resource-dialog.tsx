@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Dialog,
   DialogContent,
@@ -8,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Subject, ResourceFile } from '@/lib/data';
 import Link from 'next/link';
-import { Book, FileText } from 'lucide-react';
+import { Book, FileText, Bot } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import {
   Accordion,
@@ -18,6 +20,8 @@ import {
 } from "@/components/ui/accordion"
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import { useChatbot } from '@/context/chatbot-context';
 
 type ResourceDialogProps = {
   isOpen: boolean;
@@ -25,10 +29,32 @@ type ResourceDialogProps = {
   subject: Subject;
 };
 
-function ResourceItem({ resource }: { resource: ResourceFile; }) {
+type ResourceItemProps = {
+  resource: ResourceFile;
+  module?: string;
+  showAskAI?: boolean;
+  onCloseDialog?: () => void;
+};
+
+function ResourceItem({ resource, module, showAskAI = false, onCloseDialog }: ResourceItemProps) {
+  const { openWithPdf } = useChatbot();
+
   if (!resource || !resource.url) {
       return <p className="text-sm text-muted-foreground px-2 py-1">No resource available.</p>;
   }
+
+  const handleAskWithAI = () => {
+    // Close the dialog first
+    if (onCloseDialog) {
+      onCloseDialog();
+    }
+    // Then open the chatbot with PDF context
+    openWithPdf({
+      url: resource.url,
+      name: resource.name,
+      module: module
+    });
+  };
 
   return (
     <div className="flex items-center gap-2 group">
@@ -43,6 +69,17 @@ function ResourceItem({ resource }: { resource: ResourceFile; }) {
                 <span className="text-xs text-muted-foreground mt-1 line-clamp-2">{resource.summary}</span>
             )}
         </Link>
+        {showAskAI && (
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={handleAskWithAI}
+            className="flex items-center gap-1.5 shrink-0"
+          >
+            <Bot className="h-4 w-4" />
+            <span className="hidden sm:inline">Ask with AI</span>
+          </Button>
+        )}
     </div>
   );
 }
@@ -54,6 +91,10 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
   
   const notesModules = Object.entries(subject.notes || {}).sort(([a], [b]) => a.localeCompare(b));
   const questionPapers = subject.questionPapers || [];
+
+  const handleCloseDialog = () => {
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -72,7 +113,12 @@ export function ResourceDialog({ isOpen, onOpenChange, subject }: ResourceDialog
                         <AccordionItem value={module} key={module}>
                             <AccordionTrigger>{`Module ${module.replace('module', '')}`}</AccordionTrigger>
                             <AccordionContent>
-                                <ResourceItem resource={resourceFile} />
+                                <ResourceItem 
+                                  resource={resourceFile} 
+                                  module={`Module ${module.replace('module', '')}`}
+                                  showAskAI={true}
+                                  onCloseDialog={handleCloseDialog}
+                                />
                             </AccordionContent>
                         </AccordionItem>
                     ))}

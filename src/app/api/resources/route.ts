@@ -32,7 +32,7 @@ export async function GET(request: Request) {
         (subject as any).branch = dbSubject.branch;
         (subject as any).semester = dbSubject.semester;
 
-        const basePath = ['VTU Assistant', dbSubject.scheme, dbSubject.branch, dbSubject.semester, dbSubject.subjectId];
+        const basePath = ['Study Sphere Hub', dbSubject.scheme, dbSubject.branch, dbSubject.semester, dbSubject.subjectId];
         
         // Fetch notes
         for (let i = 1; i <= 5; i++) {
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
 
     // 3. Process dynamic resources locally for each subject
     for (const subject of subjectsMap.values()) {
-        const basePath = ['VTU Assistant', scheme, branch, semester, subject.id];
+        const basePath = ['Study Sphere Hub', scheme, branch, semester, subject.id];
         
         // Fetch notes (module-wise) - filtering locally from pre-fetched files
         for (let i = 1; i <= 5; i++) {

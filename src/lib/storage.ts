@@ -197,3 +197,32 @@ export async function checkForExistingFile(path: string[]): Promise<string | nul
     return null;
   }
 }
+
+/**
+ * Fetches file content from a URL and returns it as base64.
+ * Used for sending PDF files to AI for processing.
+ * @param fileUrl The URL of the file to fetch.
+ * @returns Object containing base64 content and mime type.
+ */
+export async function getFileContentAsBase64(fileUrl: string): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const response = await fetch(fileUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'application/pdf';
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64 = buffer.toString('base64');
+    
+    return {
+      base64,
+      mimeType: contentType
+    };
+  } catch (error: any) {
+    console.error(`Error fetching file content:`, error);
+    throw new Error(`Failed to fetch file content: ${error.message}`);
+  }
+}
