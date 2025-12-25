@@ -1,8 +1,7 @@
-
 export type ResourceFile = {
   name: string;
   url: string;
-  s3Key?: string; // S3 object key, useful for delete operations
+  fileId?: string;
   summary?: string;
 }
 
@@ -17,14 +16,6 @@ export type Subject = {
 export const schemes = [
   { value: '2022', label: '2022 Scheme' },
   { value: '2021', label: '2021 Scheme' },
-];
-
-export const branches = [
-  { value: 'cse', label: 'Computer Science' },
-  { value: 'ise', label: 'Information Science' },
-  { value: 'ece', label: 'Electronics & Communication' },
-  { value: 'me', label: 'Mechanical Engineering' },
-  { value: 'cv', label: 'Civil Engineering' },
 ];
 
 export const years = [
@@ -48,14 +39,3 @@ export const semesters = [
 export const cycles = [
   { value: '1', label: 'P & C Cycle' },
 ];
-
-type Resources = {
-  [scheme: string]: {
-    [branch: string]: {
-      [semester: string]: any[]; // This is now dynamic
-    };
-  };
-};
-
-// Mock data is no longer needed as we fetch dynamically.
-export const resources: Resources = {};

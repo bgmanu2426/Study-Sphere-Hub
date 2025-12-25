@@ -14,29 +14,32 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
-import { ADMIN_EMAIL } from '@/lib/constants';
+import toast from 'react-hot-toast';
 
 export function AppHeader() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    try {
+      await logout();
+      toast.success('You have been logged out successfully.');
+      router.push('/login');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to logout. Please try again.');
+    }
   };
 
   const getInitials = (email?: string | null) => {
     return email ? email.substring(0, 2).toUpperCase() : <UserIcon className="h-5 w-5" />;
   };
 
-  const isAdmin = user && user.email === ADMIN_EMAIL;
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center">
+      <div className="container flex h-14 sm:h-16 max-w-screen-2xl items-center px-4 sm:px-6 lg:px-8">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <GraduationCap className="h-6 w-6 text-primary" />
-          <span className="font-bold sm:inline-block">VTU Assistant</span>
+          <span className="font-bold sm:inline-block">Study Sphere Hub</span>
         </Link>
         <nav className="flex flex-1 items-center gap-4 text-sm">
           {isAdmin && (

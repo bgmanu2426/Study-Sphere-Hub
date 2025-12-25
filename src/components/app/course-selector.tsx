@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { schemes, branches, years, semesters as allSemesters, cycles } from '@/lib/data';
-import { Loader2, Search } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { schemes, years, semesters as allSemesters, cycles } from '@/lib/data';
+import { getBranches } from '@/lib/database';
+import { Loader2, Search, X } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
 
 const formSchema = z.object({
   scheme: z.string().min(1, 'Please select a scheme'),
@@ -33,10 +34,15 @@ const formSchema = z.object({
 
 type CourseSelectorProps = {
   onSearch: (filters: z.infer<typeof formSchema>) => void;
+  onClear?: () => void;
   isLoading: boolean;
+  isFiltered?: boolean;
 };
 
-export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
+export function CourseSelector({ onSearch, onClear, isLoading, isFiltered }: CourseSelectorProps) {
+  const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -46,6 +52,22 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
       semester: '',
     },
   });
+
+  // Load branches from database
+  useEffect(() => {
+    async function loadBranches() {
+      setIsLoadingBranches(true);
+      try {
+        const dbBranches = await getBranches();
+        setBranches(dbBranches.map(b => ({ value: b.value, label: b.label })));
+      } catch (error) {
+        console.error('Error loading branches:', error);
+      } finally {
+        setIsLoadingBranches(false);
+      }
+    }
+    loadBranches();
+  }, []);
 
   const selectedYear = form.watch('year');
 
@@ -69,6 +91,11 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     onSearch(values);
+  }
+
+  function handleClear() {
+    form.reset();
+    onClear?.();
   }
 
   return (
@@ -110,10 +137,10 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Branch</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingBranches}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select Branch" />
+                          <SelectValue placeholder={isLoadingBranches ? "Loading..." : "Select Branch"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -177,14 +204,20 @@ export function CourseSelector({ onSearch, isLoading }: CourseSelectorProps) {
                 )}
               />
             </div>
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end gap-2 pt-2">
+              {isFiltered && (
+                <Button type="button" variant="outline" onClick={handleClear} disabled={isLoading}>
+                  <X className="mr-2 h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
               <Button type="submit" disabled={isLoading} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} className="hover:bg-accent/90">
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}
-                Get Resources
+                Search
               </Button>
             </div>
           </form>

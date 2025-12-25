@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -29,7 +29,6 @@ const formSchema = z.object({
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,17 +41,10 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       await login(values.email, values.password);
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
-      });
+      toast.success('Welcome back!');
       router.push('/');
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'Invalid credentials. Please try again.',
-      });
+      toast.error(error.message || 'Invalid credentials. Please try again.');
     }
   }
   

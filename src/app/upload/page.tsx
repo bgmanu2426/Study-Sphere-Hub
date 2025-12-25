@@ -6,29 +6,28 @@ import { useEffect } from 'react';
 import { UploadForm } from '@/components/app/upload-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { ADMIN_EMAIL } from '@/lib/constants';
 
 export default function UploadPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return; // Wait until loading is false
 
     if (!user) {
-      // If not logged in at all, redirect to admin login
-      router.push('/admin-login');
+      // If not logged in at all, redirect to login
+      router.push('/login');
       return;
     }
 
-    if (user.email !== ADMIN_EMAIL) {
-      // If logged in but not as admin, redirect to home
+    if (!isAdmin) {
+      // If logged in but not admin, redirect to home
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, isAdmin, router]);
 
   // Show a loading state while we verify the user
-  if (loading || !user || user.email !== ADMIN_EMAIL) {
+  if (loading || !user || !isAdmin) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />

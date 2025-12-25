@@ -16,10 +16,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { useEffect } from 'react';
-import { ADMIN_EMAIL } from '@/lib/constants';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -27,9 +26,8 @@ const formSchema = z.object({
 });
 
 export default function AdminLoginPage() {
-  const { login, user, loading } = useAuth();
+  const { login, user, loading, isAdmin } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,36 +38,26 @@ export default function AdminLoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (values.email !== ADMIN_EMAIL) {
-      toast({
-        variant: 'destructive',
-        title: 'Access Denied',
-        description: 'This email address is not authorized for admin access.',
-      });
-      return;
-    }
-
     try {
       await login(values.email, values.password);
-      toast({
-        title: 'Admin Login Successful',
-        description: 'Redirecting to the upload panel...',
-      });
-      router.push('/upload');
+      // After login, check if user has admin role
+      // The redirect will happen in useEffect after user state updates
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'Invalid credentials. Please try again.',
-      });
+      toast.error(error.message || 'Invalid credentials. Please try again.');
     }
   }
   
   useEffect(() => {
-    if (!loading && user && user.email === ADMIN_EMAIL) {
-      router.push('/upload');
+    if (!loading && user) {
+      if (isAdmin) {
+        toast.success('Admin Login Successful. Redirecting to the upload panel...');
+        router.push('/upload');
+      } else {
+        toast.error('Access Denied. You do not have admin privileges.');
+        router.push('/');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, isAdmin, router]);
 
 
   if (loading) {

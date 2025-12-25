@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { Subject, ResourceFile } from '@/lib/data';
 import { Loader2, Trash2 } from 'lucide-react';
 import {
@@ -25,6 +25,7 @@ import { Book, FileText } from 'lucide-react';
 type Filters = {
     scheme: string;
     branch: string;
+    year: string;
     semester: string;
     subject: string;
 };
@@ -35,12 +36,10 @@ type ExistingResourcesProps = {
     refreshKey: number;
 };
 
-function ResourceItem({ resource, onDelete }: { resource: ResourceFile; onDelete: (s3Key: string) => void; }) {
+function ResourceItem({ resource, onDelete }: { resource: ResourceFile; onDelete: (fileId: string) => void; }) {
   if (!resource || !resource.url) {
       return null;
   }
-
-  const isStaticLink = resource.url.includes('vtucircle.com');
 
   return (
     <div className="flex items-center gap-2 group p-2 rounded-md hover:bg-muted/50 transition-colors">
@@ -52,12 +51,12 @@ function ResourceItem({ resource, onDelete }: { resource: ResourceFile; onDelete
         >
             {resource.name}
         </Link>
-        {!isStaticLink && resource.s3Key && (
+        {resource.fileId && (
              <Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => onDelete(resource.s3Key!)}
+                onClick={() => onDelete(resource.fileId!)}
              >
                 <Trash2 className="h-4 w-4" />
              </Button>
@@ -68,47 +67,63 @@ function ResourceItem({ resource, onDelete }: { resource: ResourceFile; onDelete
 
 export function ExistingResources({ filters, onResourceDeleted, refreshKey }: ExistingResourcesProps) {
     const { user } = useAuth();
-    const { toast } = useToast();
     const [subject, setSubject] = useState<Subject | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    const fetchResources = useCallback(async () => {
-        if (!user || !filters.subject) {
+    // Stable string key for filters to prevent unnecessary re-fetches
+    const filtersKey = `${filters.scheme}-${filters.branch}-${filters.year}-${filters.semester}-${filters.subject}`;
+
+    useEffect(() => {
+        // Cancel any pending request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        if (!user || !filters.subject || !filters.scheme || !filters.branch || !filters.semester) {
             setSubject(null);
             return;
         }
 
-        setIsLoading(true);
-        try {
-            const { scheme, branch, semester, subject: subjectId, year } = filters as Filters & { year: string };
-            const idToken = await user.getIdToken();
-            
-            const response = await fetch(`/api/resources?scheme=${scheme}&branch=${branch}&year=${year}&semester=${semester}`, {
-                headers: { Authorization: `Bearer ${idToken}` },
-            });
-            
-            if (!response.ok) throw new Error('Failed to fetch resources.');
-            
-            const fetchedSubjects: Subject[] = await response.json();
-            const currentSubject = fetchedSubjects.find(s => s.id === subjectId) || null;
-            setSubject(currentSubject);
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
 
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
-            setSubject(null);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [user, filters, toast]);
+        const fetchResources = async () => {
+            setIsLoading(true);
+            try {
+                const { scheme, branch, semester, subject: subjectId, year } = filters;
+                
+                const response = await fetch(
+                    `/api/resources?scheme=${scheme}&branch=${branch}&year=${year}&semester=${semester}`,
+                    { signal: abortController.signal }
+                );
+                
+                if (!response.ok) throw new Error('Failed to fetch resources.');
+                
+                const fetchedSubjects: Subject[] = await response.json();
+                const currentSubject = fetchedSubjects.find(s => s.id === subjectId) || null;
+                setSubject(currentSubject);
 
-    useEffect(() => {
+            } catch (error: any) {
+                if (error.name === 'AbortError') return; // Ignore aborted requests
+                toast.error(error.message);
+                setSubject(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
         fetchResources();
-    }, [fetchResources, refreshKey]);
 
-    const handleDeleteRequest = (s3Key: string) => {
-        setDeleteCandidate(s3Key);
+        return () => {
+            abortController.abort();
+        };
+    }, [user, filtersKey, refreshKey]);
+
+    const handleDeleteRequest = (fileId: string) => {
+        setDeleteCandidate(fileId);
     }
 
     const executeDelete = async () => {
@@ -118,11 +133,11 @@ export function ExistingResources({ filters, onResourceDeleted, refreshKey }: Ex
         try {
             const result = await deleteResource(deleteCandidate);
             if (result.error) throw new Error(result.error);
-            toast({ title: "Success", description: "Resource deleted." });
+            toast.success("Resource deleted.");
             setDeleteCandidate(null);
             onResourceDeleted(); // This will trigger a refresh via the parent component
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.message });
+            toast.error(error.message);
         } finally {
             setIsDeleting(false);
         }
@@ -136,8 +151,8 @@ export function ExistingResources({ filters, onResourceDeleted, refreshKey }: Ex
         return <p className="text-sm text-muted-foreground">Select a subject to see existing resources.</p>;
     }
 
-    const uploadedNotes = Object.entries(subject.notes || {}).filter(([, resource]) => resource && resource.s3Key);
-    const uploadedQPs = (subject.questionPapers || []).filter(qp => qp.s3Key);
+    const uploadedNotes = Object.entries(subject.notes || {}).filter(([, resource]) => resource && resource.fileId);
+    const uploadedQPs = (subject.questionPapers || []).filter(qp => qp.fileId);
     const hasUploadedFiles = uploadedNotes.length > 0 || uploadedQPs.length > 0;
 
     return (

@@ -1,20 +1,16 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  User as FirebaseUser,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { Loader2 } from 'lucide-react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
+import { account } from '@/lib/appwrite';
+import { Models, ID } from 'appwrite';
+import { ROLE_ADMIN } from '@/lib/constants';
 
 interface AuthContextType {
-  user: FirebaseUser | null;
+  user: Models.User<Models.Preferences> | null;
   loading: boolean;
-  signup: (email: string, password: string) => Promise<any>;
+  isAdmin: boolean;
+  hasRole: (role: string) => boolean;
+  signup: (email: string, password: string, name: string) => Promise<any>;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
 }
@@ -22,105 +18,62 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // For production, onAuthStateChanged will handle auth state.
-    // For the mock user, we set it directly in the login function.
-    if (process.env.NODE_ENV === 'production') {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-        setUser(user);
+    // Check if user is already logged in
+    const checkUser = async () => {
+      try {
+        const currentUser = await account.get();
+        setUser(currentUser);
+      } catch (error) {
+        // User is not logged in
+        setUser(null);
+      } finally {
         setLoading(false);
-        });
-        return () => unsubscribe();
-    } else {
-        setLoading(false);
-    }
+      }
+    };
+    
+    checkUser();
   }, []);
 
-  const signup = (email: string, password: string) => {
-    // In development, we bypass Firebase Auth and create a mock user.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log("DEV MODE: Bypassing Firebase Auth for signup and creating a mock user.");
-      const mockUser: FirebaseUser = {
-        uid: `mock-user-uid-${Math.random().toString(36).substring(2)}`,
-        email: email,
-        displayName: 'Mock User',
-        photoURL: null,
-        emailVerified: true,
-        isAnonymous: false,
-        metadata: {},
-        providerData: [],
-        providerId: 'password',
-        tenantId: null,
-        delete: async () => {},
-        getIdToken: async () => 'mock-id-token',
-        getIdTokenResult: async () => ({
-          token: 'mock-id-token',
-          expirationTime: '',
-          authTime: '',
-          issuedAtTime: '',
-          signInProvider: null,
-          signInSecondFactor: null,
-          claims: {},
-        }),
-        reload: async () => {},
-        toJSON: () => ({}),
-      };
-      setUser(mockUser);
-      return Promise.resolve();
-    }
-    return createUserWithEmailAndPassword(auth, email, password);
+  // Check if user has a specific role using Appwrite labels
+  const hasRole = (role: string): boolean => {
+    if (!user) return false;
+    return user.labels?.includes(role) ?? false;
   };
 
-  const login = (email: string, password: string) => {
-    // In development, we bypass Firebase Auth and create a mock user.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log("DEV MODE: Bypassing Firebase Auth and creating a mock user.");
-      const mockUser: FirebaseUser = {
-        uid: 'mock-user-uid-12345',
-        email: email,
-        displayName: 'Mock User',
-        photoURL: null,
-        emailVerified: true,
-        isAnonymous: false,
-        metadata: {},
-        providerData: [],
-        providerId: 'password',
-        tenantId: null,
-        delete: async () => {},
-        getIdToken: async () => 'mock-id-token',
-        getIdTokenResult: async () => ({
-          token: 'mock-id-token',
-          expirationTime: '',
-          authTime: '',
-          issuedAtTime: '',
-          signInProvider: null,
-          signInSecondFactor: null,
-          claims: {},
-        }),
-        reload: async () => {},
-        toJSON: () => ({}),
-      };
-      setUser(mockUser);
-      return Promise.resolve();
-    }
-    // In production, use the real Firebase login.
-    return signInWithEmailAndPassword(auth, email, password);
+  // Computed property for admin check
+  const isAdmin = useMemo(() => {
+    return hasRole(ROLE_ADMIN);
+  }, [user]);
+
+  const signup = async (email: string, password: string, name: string) => {
+    // Create a new account with name
+    await account.create(ID.unique(), email, password, name);
+    // Login the user after signup
+    await account.createEmailPasswordSession(email, password);
+    const currentUser = await account.get();
+    setUser(currentUser);
   };
 
-  const logout = () => {
-    // Also clear the mock user on logout
-    if (process.env.NODE_ENV !== 'production') {
-        setUser(null);
-    }
-    return signOut(auth);
+  const login = async (email: string, password: string) => {
+    await account.createEmailPasswordSession(email, password);
+    const currentUser = await account.get();
+    setUser(currentUser);
+  };
+
+  const logout = async () => {
+    await account.deleteSession('current');
+    setUser(null);
   };
   
   const value = {
     user,
     loading,
+    isAdmin,
+    hasRole,
     signup,
     login,
     logout,

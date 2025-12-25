@@ -8,6 +8,7 @@ type ResourceListProps = {
   isLoading: boolean;
   filtersSet: boolean;
   onResourceChange: () => void;
+  isFiltered?: boolean;
 };
 
 function ResourceSkeleton() {
@@ -22,11 +23,11 @@ function ResourceSkeleton() {
     )
 }
 
-export function ResourceList({ subjects, isLoading, filtersSet, onResourceChange }: ResourceListProps) {
+export function ResourceList({ subjects, isLoading, filtersSet, onResourceChange, isFiltered }: ResourceListProps) {
   if (isLoading) {
     return (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {[...Array(4)].map((_, i) => <ResourceSkeleton key={i} />)}
+            {[...Array(8)].map((_, i) => <ResourceSkeleton key={i} />)}
         </div>
     )
   }
@@ -42,18 +43,26 @@ export function ResourceList({ subjects, isLoading, filtersSet, onResourceChange
   if (subjects.length === 0 && filtersSet) {
     return (
       <div className="text-center py-10">
-        <h3 className="text-xl font-medium">No resources found for the selected criteria.</h3>
-        <p className="text-muted-foreground">Please try a different combination.</p>
+        <h3 className="text-xl font-medium">No resources found.</h3>
+        <p className="text-muted-foreground">Please try a different combination or check back later.</p>
       </div>
     );
   }
 
   return (
     <div>
-        <h2 className="text-2xl font-bold mb-4">Subjects</h2>
+        <h2 className="text-2xl font-bold mb-4">
+          {isFiltered ? 'Filtered Results' : 'All Available Subjects'}
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          {isFiltered 
+            ? `Showing ${subjects.length} subject${subjects.length !== 1 ? 's' : ''} matching your criteria.`
+            : `Browse all ${subjects.length} available subjects. Use the filters above to narrow down your search.`
+          }
+        </p>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {subjects.map((subject) => (
-                <ResourceCard key={subject.id} subject={subject} onResourceChange={onResourceChange} />
+            {subjects.map((subject, index) => (
+                <ResourceCard key={`${subject.id}-${index}`} subject={subject} onResourceChange={onResourceChange} />
             ))}
         </div>
     </div>

@@ -1,4 +1,4 @@
-# **App Name**: VTU Assistant
+# **App Name**: Study Sphere Hub
 
 ## Core Features:
 

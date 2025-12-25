@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { getFilesFromS3 } from '@/lib/s3';
-import { vtuResources } from '@/lib/vtu-data';
+import { getFilesFromStorage, getAllFilesFromStorage } from '@/lib/storage';
+import { getServerSubjects, getAllServerSubjects, DbSubject } from '@/lib/database-server';
 import { Subject, ResourceFile } from '@/lib/data';
 
 export async function GET(request: Request) {
@@ -10,70 +10,128 @@ export async function GET(request: Request) {
   const branch = searchParams.get('branch');
   const year = searchParams.get('year');
   const semester = searchParams.get('semester');
+  const all = searchParams.get('all'); // New parameter to fetch all resources
 
+  // If 'all' parameter is set, return all subjects from database
+  if (all === 'true') {
+    try {
+      const allSubjects: Subject[] = [];
+      const allFiles = await getAllFilesFromStorage();
+      const dbSubjects = await getAllServerSubjects();
+
+      for (const dbSubject of dbSubjects) {
+        const subject: Subject = {
+          id: dbSubject.subjectId,
+          name: dbSubject.name,
+          notes: {},
+          questionPapers: [],
+        };
+        
+        // Add metadata for display
+        (subject as any).scheme = dbSubject.scheme;
+        (subject as any).branch = dbSubject.branch;
+        (subject as any).semester = dbSubject.semester;
+
+        const basePath = ['Study Sphere Hub', dbSubject.scheme, dbSubject.branch, dbSubject.semester, dbSubject.subjectId];
+        
+        // Fetch notes
+        for (let i = 1; i <= 5; i++) {
+          const moduleKey = `module${i}`;
+          const notesPath = [...basePath, 'notes', moduleKey];
+          const notesFiles = await getFilesFromStorage(notesPath.join('/'), allFiles);
+          if (notesFiles.length > 0) {
+            subject.notes[moduleKey] = {
+              name: notesFiles[0].name,
+              url: notesFiles[0].url,
+              summary: notesFiles[0].summary,
+              fileId: notesFiles[0].fileId,
+            };
+          }
+        }
+
+        // Fetch question papers
+        const qpPath = [...basePath, 'question-papers'];
+        const qpFiles = await getFilesFromStorage(qpPath.join('/'), allFiles);
+        if (qpFiles.length > 0) {
+          qpFiles.forEach(file => {
+            if (!subject.questionPapers.some(qp => qp.url === file.url)) {
+              subject.questionPapers.push({
+                name: file.name,
+                url: file.url,
+                summary: file.summary,
+                fileId: file.fileId,
+              });
+            }
+          });
+        }
+
+        allSubjects.push(subject);
+      }
+
+      return NextResponse.json(allSubjects);
+    } catch (error: any) {
+      console.error('Failed to retrieve all resources:', error);
+      return NextResponse.json({ error: 'An internal server error occurred.' }, { status: 500 });
+    }
+  }
+
+  // Original filtered logic
   if (!scheme || !branch || !semester) {
     return NextResponse.json({ error: 'Missing required query parameters' }, { status: 400 });
   }
 
   try {
-    // 1. Get static resources for the selected criteria
-    const schemeData = vtuResources[scheme as keyof typeof vtuResources];
-    if (!schemeData) {
-        return NextResponse.json([]);
+    // 1. Get subjects from database for the selected criteria
+    const dbSubjects = await getServerSubjects(scheme, branch, semester);
+    
+    if (dbSubjects.length === 0) {
+      return NextResponse.json([]);
     }
 
-    const branchData = schemeData[branch as keyof typeof schemeData];
-    if (!branchData) {
-        return NextResponse.json([]);
-    }
-      
-    const staticSubjectsForSemester: Subject[] = branchData[semester as keyof typeof branchData] || [];
-
-    // Create a deep copy to avoid modifying the original vtu-data
+    // Create subjects map from database
     const subjectsMap = new Map<string, Subject>();
-    staticSubjectsForSemester.forEach(staticSub => {
-      subjectsMap.set(staticSub.id, JSON.parse(JSON.stringify(staticSub)));
+    dbSubjects.forEach(dbSubject => {
+      subjectsMap.set(dbSubject.subjectId, {
+        id: dbSubject.subjectId,
+        name: dbSubject.name,
+        notes: {},
+        questionPapers: [],
+      });
     });
 
-    // 3. Fetch dynamic resources from AWS S3 for each subject
+    // 2. Fetch ALL files from storage ONCE (single API call)
+    const allFiles = await getAllFilesFromStorage();
+
+    // 3. Process dynamic resources locally for each subject
     for (const subject of subjectsMap.values()) {
-        const s3Path = ['VTU Assistant', scheme, branch, semester, subject.id];
+        const basePath = ['Study Sphere Hub', scheme, branch, semester, subject.id];
         
-        // Fetch notes (module-wise)
+        // Fetch notes (module-wise) - filtering locally from pre-fetched files
         for (let i = 1; i <= 5; i++) {
             const moduleKey = `module${i}`;
-            const notesPath = [...s3Path, 'notes', moduleKey];
-            const notesFiles = await getFilesFromS3(notesPath.join('/'));
+            const notesPath = [...basePath, 'notes', moduleKey];
+            const notesFiles = await getFilesFromStorage(notesPath.join('/'), allFiles);
             if (notesFiles.length > 0) {
-                // Ensure the notes object and module key exist
-                if (!subject.notes) {
-                    subject.notes = {};
-                }
-                // Since our new logic prevents multiple files per module, we take the first one.
                 subject.notes[moduleKey] = {
                     name: notesFiles[0].name,
                     url: notesFiles[0].url,
                     summary: notesFiles[0].summary,
-                    s3Key: notesFiles[0].s3Key,
+                    fileId: notesFiles[0].fileId,
                 };
             }
         }
 
-        // Fetch question papers
-        const qpPath = [...s3Path, 'question-papers'];
-        const qpFiles = await getFilesFromS3(qpPath.join('/'));
+        // Fetch question papers - filtering locally from pre-fetched files
+        const qpPath = [...basePath, 'question-papers'];
+        const qpFiles = await getFilesFromStorage(qpPath.join('/'), allFiles);
         if(qpFiles.length > 0) {
-            const driveQps: ResourceFile[] = qpFiles.map(file => ({
+            const storageQps: ResourceFile[] = qpFiles.map(file => ({
                 name: file.name,
                 url: file.url,
                 summary: file.summary,
-                s3Key: file.s3Key,
+                fileId: file.fileId,
             }));
-             if (!subject.questionPapers) {
-                subject.questionPapers = [];
-            }
-            // Add new files, avoiding duplicates based on URL
-            driveQps.forEach(newQp => {
+            storageQps.forEach(newQp => {
               if (!subject.questionPapers.some(existingQp => existingQp.url === newQp.url)) {
                 subject.questionPapers.push(newQp);
               }
