@@ -112,7 +112,7 @@ export function Chatbot() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div className="flex items-center gap-3">
                 <Bot className="w-6 h-6 text-primary" />
-                <CardTitle>VTU AI Assistant</CardTitle>
+                <CardTitle>Study Sphere Assistant</CardTitle>
               </div>
               <Button variant="ghost" size="icon" onClick={handleClose}>
                 <X className="h-4 w-4" />
